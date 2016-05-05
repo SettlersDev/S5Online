@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace S5GameServer
@@ -82,9 +83,9 @@ namespace S5GameServer
             var game = msg.LobbyData[0].AsString;
             Connection.Send(msg.LobbySuccessResponse());
             //LOBBY_MSG (209, 1, 4) [ "54" [ "0" "Le comptoir des Settlers" "870" "51" "0" "2068" "0" "" "SETTLERSHOK" "SETTLERSHOK" Bin{} "0" "500" "0"]]
-            Connection.Send(new Message(MessageType.GSMessage, LobbyMessageCode.LB_GROUPNEW, new DNodeList { 0, "Developer's Playground 0", 870, 51, 0, 2068, 0, "", "SETTLERSHOK", "SETTLERSHOK", new byte[0], 0, 500, 0 }, 1, 4));
-            Connection.Send(new Message(MessageType.GSMessage, LobbyMessageCode.LB_GROUPNEW, new DNodeList { 0, "Developer's Playground 1", 871, 52, 0, 2068, 0, "", "SETTLERSHOK", "SETTLERSHOK", new byte[0], 0, 500, 0 }, 1, 4));
-            Connection.Send(new Message(MessageType.GSMessage, LobbyMessageCode.LB_GROUPNEW, new DNodeList { 0, "Developer's Playground 2", 872, 51, 0, 2068, 0, "", "SETTLERSHOK", "SETTLERSHOK", new byte[0], 0, 501, 0 }, 8, 2));
+            Connection.Send(new Message(MessageType.GSMessage, LobbyMessageCode.LB_GROUPNEW, new DNodeList { 0, "ADeveloper's Playground 0", 870, 51, 0, 2068, 0, "", "SETTLERSHOK", "SETTLERSHOK", new byte[0], 0, 500, 0 }, 1, 4));
+            Connection.Send(new Message(MessageType.GSMessage, LobbyMessageCode.LB_GROUPNEW, new DNodeList { 0, "CDeveloper's Playground 2", 871, 52, 0, 2068, 0, "", "SETTLERSHOK", "SETTLERSHOK", new byte[0], 0, 500, 0 }, 1, 4));
+            Connection.Send(new Message(MessageType.GSMessage, LobbyMessageCode.LB_GROUPNEW, new DNodeList { 0, "BDeveloper's Playground 2", 872, 51, 0, 2068, 0, "", "SETTLERSHOK", "SETTLERSHOK", new byte[0], 0, 501, 0 }, 8, 2));
         }
     }
 

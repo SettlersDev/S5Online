@@ -1,8 +1,10 @@
 ﻿using S5GameServices;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
@@ -92,54 +94,64 @@ namespace S5GameServer
     public abstract class ClientConnection
     {
         byte[] buffer = new byte[1024];
-        TcpClient client;
+        TcpClient tcpConn;
+        Socket socket;
         NetworkStream stream;
         RsaKeyExchange keyEx = new RsaKeyExchange();
 
-        public string IP { get { return (client.Client.RemoteEndPoint as IPEndPoint).Address.ToString(); } }
+        public string IP { get { return (tcpConn.Client.RemoteEndPoint as IPEndPoint).Address.ToString(); } }
         public Blowfish BlowfishContext = null;
 
         protected abstract void CallMessageHandler(Message msg);
         protected abstract MessageServer Server { get; }
         protected abstract ClientHandler ClientHandler { get; }
 
+        protected void LogSocketError(SocketError se)
+        {
+            Console.WriteLine("Socket Error: " + se.ToString());
+        }
 
         public void HandleClient(object state)
         {
-            client = state as TcpClient;
-            stream = client.GetStream();
+            tcpConn = state as TcpClient;
+            socket = tcpConn.Client;
+            stream = tcpConn.GetStream();
 
-            while (client.Client.Connected)
+            while (tcpConn.Client.Connected)
             {
-                var asyncReader = stream.BeginRead(buffer, 0, 6, null, null);
-                if (!asyncReader.AsyncWaitHandle.WaitOne(Server.TimeoutMS, false))
-                    { Console.WriteLine("timeout header"); break; }
+                SocketError se;
+                var recvResult = socket.BeginReceive(buffer, 0, 6, SocketFlags.None, out se, null, null);
+                if (se != SocketError.Success) { LogSocketError(se); break; }
 
-                var headerLen = stream.EndRead(asyncReader);
-                if (headerLen == 0)
-                    break;
+                if (!recvResult.AsyncWaitHandle.WaitOne(Server.TimeoutMS, false)) { Console.WriteLine("timeout header"); break; }
 
-                if (headerLen != 6)
-                { Console.WriteLine("header len = {0} != 6", headerLen); break; }
+                if (socket.EndReceive(recvResult, out se) != 6) { Console.WriteLine("header len != 6"); break; }
+
+                if (se != SocketError.Success) { LogSocketError(se); break; }
 
                 int msgSize = buffer[2] + 256 * buffer[1] + 256 * 256 * buffer[0];
-                if (msgSize != 6)
+                if (msgSize > 6)
                 {
-                    asyncReader = stream.BeginRead(buffer, 6, msgSize - 6, null, null);
+                    recvResult = socket.BeginReceive(buffer, 6, msgSize - 6, SocketFlags.None, out se, null, null);
+                    if (se != SocketError.Success) { LogSocketError(se); break; }
 
-                    if (!asyncReader.AsyncWaitHandle.WaitOne(Server.TimeoutMS, false))
-                    { Console.WriteLine("timeout body"); break; }
+                    if (!recvResult.AsyncWaitHandle.WaitOne(Server.TimeoutMS, false)) { Console.WriteLine("timeout body"); break; }
 
-                    if (stream.EndRead(asyncReader) != msgSize - 6)
-                    { Console.WriteLine("body len invalid"); break; }
+                    if (socket.EndReceive(recvResult, out se) != msgSize - 6) { Console.WriteLine("body len invalid"); break; }
+
+                    if (se != SocketError.Success) { LogSocketError(se); break; }
+                }
+                else
+                {
+                    Console.WriteLine("Message len = {0} WAT", msgSize);
+                    break;
                 }
 
                 CallMessageHandler(Message.ParseIncoming(buffer, BlowfishContext).First());
-
             }
             Console.WriteLine("close client");
             ClientHandler.Disconnect();
-            client.Close();
+            tcpConn.Close();
         }
 
         protected void HandleKeyExchange(Message msg)
