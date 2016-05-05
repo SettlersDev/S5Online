@@ -141,7 +141,7 @@ namespace S5GameServer
 
                     if (se != SocketError.Success) { LogSocketError(se); break; }
                 }
-                else
+                else if(msgSize < 6)
                 {
                     Console.WriteLine("Message len = {0} WAT", msgSize);
                     break;
