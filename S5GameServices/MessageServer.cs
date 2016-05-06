@@ -166,16 +166,23 @@ namespace S5GameServer
 
         public void Send(Message msg)
         {
-            if (stream.CanWrite)
+            try
             {
-                if (msg.Code != MessageCode.RSAEXCHANGE && msg.Code != MessageCode.STILLALIVE)
-                    Console.WriteLine("OUT: " + msg.ToString());
+                if (stream.CanWrite)
+                {
+                    if (msg.Code != MessageCode.RSAEXCHANGE && msg.Code != MessageCode.STILLALIVE)
+                        Console.WriteLine("OUT: " + msg.ToString());
 
-                var data = msg.Serialize();
-                stream.Write(data, 0, data.Length);
+                    var data = msg.Serialize();
+                    stream.Write(data, 0, data.Length);
+                }
+                else
+                    Console.WriteLine("stream closed, cant respond!");
             }
-            else
-                Console.WriteLine("stream closed, cant respond!");
+            catch (Exception ex)
+            {
+                Console.WriteLine("Send() Error: " + ex.Message);
+            }
         }
     }
 

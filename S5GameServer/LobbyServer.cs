@@ -72,18 +72,25 @@ namespace S5GameServer
         {
             var id = msg.LobbyData[0].AsInt;
 
-            if (id == actLobby.LobbyID)
+            if (id > 0) //lobby
             {
                 LeaveLobby();
+                Connection.Send(msg.LobbySuccessResponse(new DNodeList { id }));
             }
-            else if (id == actRoom.ID)
+            else if (id < 0) //game room
             {
                 LeaveRoom();
+                Connection.Send(msg.LobbySuccessResponse(new DNodeList { id }));
+                if (actRoom.Players.Count == 0)
+                {
+                    actLobby.Broadcast(new Message(LobbyMessageCode.LB_GROUPREMOVE, new DNodeList { actRoom.ID }));
+                    actLobby.Rooms.Remove(actRoom.ID);
+                }
+                actRoom = null;
             }
             else
                 throw new NotImplementedException();
 
-            Connection.Send(msg.LobbySuccessResponse(new DNodeList { id }));
         }
 
         [Handler(LobbyMessageCode.LB_ROOMCREATE)]
@@ -129,6 +136,65 @@ namespace S5GameServer
             Connection.Send(msg.LobbySuccessResponse(new DNodeList { roomID }));
             room.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPJOIN, UserInfoBlock(roomID)));
         }
+        
+        [Handler(LobbyMessageCode.LB_UPDATEGROUPSETTINGS)]
+        protected void UpdateRoomSetting(Message msg)
+        {
+            /*
+                [LB_UPDATEGROUPSETTINGS("31"), ["-408" "32" "__CLOSED_ROOM__"]]
+            */
+
+            var roomID = msg.LobbyData[0].AsInt;
+            var room = actLobby.GetRoom(roomID);
+            if (room == null)
+                return;
+
+            var cmd = msg.LobbyData[2].AsString;
+            if (cmd == "__CLOSED_ROOM__")
+            {
+                // WAT DO?!
+                //SRV 12|4 LOBBY_MSG(209) [LB_GSSUCCESS("38"), ["31" ["-408"]]]
+                // maybe SRV 12|4 LOBBY_MSG(209) [LB_GROUPCONFIGUPDATE("57"), ["-408" "2099"]]
+
+                Connection.Send(msg.LobbySuccessResponse(new DNodeList { roomID }));
+                room.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { roomID, 2099 }));
+            }
+            else
+                throw new NotImplementedException();
+        }
+
+        [Handler(LobbyMessageCode.LB_GAMESTART)]
+        protected void GameStart(Message msg)
+        {
+            Connection.Send(msg.LobbySuccessResponse(new DNodeList { actRoom.ID }));
+        }
+
+        [Handler(LobbyMessageCode.LB_GAMEREADY)]
+        protected void GameReady(Message msg)
+        {
+            Connection.Send(msg.LobbySuccessResponse(new DNodeList { actRoom.ID }));
+            actRoom.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { actRoom.ID, 2106 }));
+            //[LB_GAMESTARTED("56"), ["-110" Bin{} "0" "84.115.212.253" "10.9.9.9"]]
+            actRoom.Broadcast(new Message(LobbyMessageCode.LB_GAMESTARTED, new DNodeList { actRoom.ID, new byte[0], 0, actRoom.Host.PublicIP, actRoom.Host.LocalIP }));
+            actRoom.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { actRoom.ID, 2106 }));
+        }
+
+        [Handler(LobbyMessageCode.LB_GAMECONNECTED)]
+        protected void GameConnected(Message msg)
+        {
+            actRoom.Broadcast(new Message(LobbyMessageCode.LB_PLAYERUPDATESTATUS, new DNodeList { account.Username, 2 }));
+        }
+
+        [Handler(LobbyMessageCode.LB_GAMEFINISHED)]
+        protected void GameFinished(Message msg)
+        {
+            Connection.Send(new Message(LobbyMessageCode.LB_WAKEUP, new DNodeList()));
+            actRoom.Broadcast(new Message(LobbyMessageCode.LB_PLAYERUPDATESTATUS, new DNodeList { account.Username, 0 }));
+            Connection.Send(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { actRoom.ID, 2098 }));
+        }
+
+
+
 
         protected DNodeList UserInfoBlock(int group)
         {
