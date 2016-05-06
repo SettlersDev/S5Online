@@ -72,7 +72,21 @@ namespace S5GameServer
         #region Dynamic
 
         [NonSerialized]
-        public string IP;
+        public string PublicIP;
+
+        [NonSerialized]
+        public string LocalIP;
+
+        [NonSerialized]
+        public string LocalSubnet;
+
+        [NonSerialized]
+        public byte[] GameIdentifier;
+
+        public DNodeList PlayerInfo
+        {
+            get { return new DNodeList { username, 0, PublicIP, LocalIP, GameIdentifier, new DNodeList(), -1, 0 }; }
+        }
 
         #endregion
 

@@ -24,7 +24,7 @@ namespace S5GameServer
             else
                 Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary(2) }));
 
-            account.IP = Connection.IP;
+            account.PublicIP = Connection.IP;
 
         }
 
@@ -70,11 +70,7 @@ namespace S5GameServer
             if (acc == null)
                 Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary(1) }));
             else
-                Connection.Send(msg.SuccessResponse(new DNodeList { acc.IrcAlias, acc.Username, acc.FirstName, acc.LastName, acc.Language, acc.Email, acc.IP }));
-
-            // irc nick, username, firstn, lastn, lang, mail, ip of user
-            //[GSSUCCESS] [PLAYERINFO["u0b1dd832" "yoq4711yoq" "Noe" "Lol" "de" "hy@there.net" "78.104.167.114" ]]
-            //c.Send(msg.SuccessResponse(new DNodeList { "u0b1dd832", "yoq4711yoq", "Noe", "Lol", "de", "hy@there.net", c.IP }));
+                Connection.Send(msg.SuccessResponse(new DNodeList { acc.IrcAlias, acc.Username, acc.FirstName, acc.LastName, acc.Language, acc.Email, acc.PublicIP }));
         }
 
         [Handler(LobbyMessageCode.LB_LOBBYLOGIN)]
@@ -82,10 +78,49 @@ namespace S5GameServer
         {
             var game = msg.LobbyData[0].AsString;
             Connection.Send(msg.LobbySuccessResponse());
-            //LOBBY_MSG (209, 1, 4) [ "54" [ "0" "Le comptoir des Settlers" "870" "51" "0" "2068" "0" "" "SETTLERSHOK" "SETTLERSHOK" Bin{} "0" "500" "0"]]
-            Connection.Send(new Message(MessageType.GSMessage, LobbyMessageCode.LB_GROUPNEW, new DNodeList { 0, "ADeveloper's Playground 0", 870, 51, 0, 2068, 0, "", "SETTLERSHOK", "SETTLERSHOK", new byte[0], 0, 500, 0 }, 1, 4));
-            Connection.Send(new Message(MessageType.GSMessage, LobbyMessageCode.LB_GROUPNEW, new DNodeList { 0, "CDeveloper's Playground 2", 871, 52, 0, 2068, 0, "", "SETTLERSHOK", "SETTLERSHOK", new byte[0], 0, 500, 0 }, 1, 4));
-            Connection.Send(new Message(MessageType.GSMessage, LobbyMessageCode.LB_GROUPNEW, new DNodeList { 0, "BDeveloper's Playground 2", 872, 51, 0, 2068, 0, "", "SETTLERSHOK", "SETTLERSHOK", new byte[0], 0, 501, 0 }, 8, 2));
+
+            foreach (var lobby in Lobby.AllLobbies)
+                Connection.Send(new Message(LobbyMessageCode.LB_GROUPNEW, lobby.LobbyInfo));
+        }
+
+        [Handler(LobbyMessageCode.LB_LOBBYSERVERJOIN)]
+        protected void LobbyServerJoin(Message msg)
+        {
+            if (msg.LobbyData[0].AsInt == Constants.LOBBY_SERVER_ID)
+                Connection.Send(msg.LobbySuccessResponse(new DNodeList { Constants.LOBBY_SERVER_ID, ServerConfig.Instance.HostName, Constants.LOBBY_SERVER_PORT }));
+            else
+                Connection.Send(msg.LobbyFailResponse());
+        }
+
+        [Handler(MessageCode.NEWQUERY)]
+        protected void NewQuery(Message msg)
+        {
+            /*
+                GAM 4|1 UNKNOWN(204) ["1" ["ladderquery" "0" "0"]]
+                SRV 1|4 UNKNOWN(204) ["38" ["1" ["ladderquery" "0" "0" [["48" "216.98.52.177" "42000"]]]]]
+                GAM 4|1 UNKNOWN(204) ["2" ["48"]]
+                SRV 1|4 UNKNOWN(204) ["38" ["2" ["48"]]]
+                GAM 4|1 UNKNOWN(204) [["3" "48"]] 
+            */
+            if (!(msg.Data[0] is DNodeString))
+                return;
+
+            var num = msg.Data[0].AsInt;
+            switch (num)
+            {
+                case 1:
+                    if (msg.Data[1][0].AsString == "ladderquery")
+                    {
+                        Connection.Send(new Message(MessageCode.NEWQUERY, new DNodeList { (int)MessageCode.GSSUCCESS, { 1, new DNodeList {
+                        "ladderquery", 0, 0, new DNodeList { new DNodeList { 48, ServerConfig.Instance.HostName, Constants.LADDER_LOGIN_SERVER_PORT } } } } }));
+                    }
+                    break;
+
+                case 2:
+                    Connection.Send(new Message(MessageCode.NEWQUERY, new DNodeList { (int)MessageCode.GSSUCCESS, msg.Data }));
+                    break;
+            }
+
         }
     }
 
@@ -93,7 +128,7 @@ namespace S5GameServer
     {
         public static void Run()
         {
-            var ms = new MessageServer<WaitModuleConnection>() { Port = 40001, TimeoutMS = 60000 };
+            var ms = new MessageServer<WaitModuleConnection>() { Port = Constants.WAITMODULE_SERVER_PORT, TimeoutMS = 60000 };
             ms.Run();
         }
     }

@@ -15,6 +15,9 @@ namespace S5GameServices
         public byte[] Body;
         public byte NumA, NumB;
 
+
+        public Message(MessageCode code, DNodeList args) : this(MessageType.GSMessage, code, args, 1, 4) { }
+
         public Message(MessageType type, MessageCode code, DNodeList args, byte numA, byte numB)
         {
             Type = type;
@@ -25,6 +28,8 @@ namespace S5GameServices
             NumA = numA;
             NumB = numB;
         }
+
+        public Message(LobbyMessageCode lobbyCode, DNodeList lobbyArgs) : this(MessageType.GSMessage, lobbyCode, lobbyArgs, 1, 4) { }
 
         public Message(MessageType type, LobbyMessageCode lobbyCode, DNodeList lobbyArgs, byte numA, byte numB)
         {
@@ -189,6 +194,11 @@ namespace S5GameServices
 
             return message;
         }
+
+        public override string ToString()
+        {
+            return Data.ToString();
+        }
     }
 
 
@@ -319,7 +329,7 @@ namespace S5GameServices
         GETPERSISTANTGROUPINFO = 0xC7,
         UPDATEGROUPPING = 0xCA,
         DEFERREDGAMESTARTED = 0xCB,
-        //QQQ_ = 0xCC,
+        NEWQUERY = 0xCC,                    //
         BEGINCLIENTHOSTGAME = 0xCD,
         LOBBY_MSG = 0xD1,
         LOBBYSERVERLOGIN = 0xD2,
@@ -363,6 +373,7 @@ namespace S5GameServices
         LB_GSFAIL = 0x27,
         LB_PLAYERUNBAN = 0x28,
         LB_GAMEUPDATEINFO = 0x29,
+        LB_LOBBYINFO = 0x2A,                 //
         LB_PLAYERMATCHSTARTED = 0x2C,
         LB_MATCHFINISH = 0x2D,
         LB_MEMBERGROUPJOIN = 0x32,

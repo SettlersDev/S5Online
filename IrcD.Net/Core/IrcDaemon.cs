@@ -276,7 +276,7 @@ namespace IrcD
             {
                 _localEndPoint = new IPEndPoint(IPAddress.Any, port);
                 var connectSocket = new Socket(_localEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                
+
                 connectSocket.Bind(_localEndPoint);
                 connectSocket.Listen(20);
 
@@ -299,7 +299,9 @@ namespace IrcD
                             {
                                 Socket temp = s.Accept();
                                 Sockets.Add(temp, new UserInfo(this, temp, ((IPEndPoint)temp.RemoteEndPoint).Address.ToString(), false, String.IsNullOrEmpty(Options.ServerPass)));
+#if DEBUG
                                 Logger.Log("New Client connected!", 4, "MainLoop");
+#endif
                             }
                             else
                             {
@@ -309,7 +311,7 @@ namespace IrcD
                                     int numBytes = s.ReceiveFrom(buffer, ref _ep);
 
                                     var lines = new List<string>();
-                                    for(int pos = 0; pos < numBytes; )
+                                    for (int pos = 0; pos < numBytes;)
                                     {
                                         int lineLen = (buffer[pos] << 8) + buffer[pos + 1];
                                         var lineBuf = new byte[lineLen];
@@ -318,9 +320,10 @@ namespace IrcD
                                         lines.AddRange(Global.ServerEncoding.GetString(lineBuf).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
                                         pos += 2 + lineLen;
                                     }
-                                    
+
                                     foreach (string line in lines)
                                     {
+                                        //Console.WriteLine("IRC:\t" + line);
                                         Parser(line, s, Sockets[s]);
                                     }
                                 }

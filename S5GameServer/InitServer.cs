@@ -23,7 +23,7 @@ namespace S5GameServer
         public static void Run()
         {
             BuildInitResponse();
-            ws = new WebServer(new[] { "http://" + ServerConfig.Instance.HostName + ":" + ServerConfig.Instance.InitPort.ToString() + "/" }, HandleRequest);
+            ws = new WebServer(new[] { "http://*:" + ServerConfig.Instance.InitPort.ToString() + "/" }, HandleRequest);
             ws.Run();
         }
 

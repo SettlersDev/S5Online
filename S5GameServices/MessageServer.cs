@@ -141,7 +141,7 @@ namespace S5GameServer
 
                     if (se != SocketError.Success) { LogSocketError(se); break; }
                 }
-                else if(msgSize < 6)
+                else if (msgSize < 6)
                 {
                     Console.WriteLine("Message len = {0} WAT", msgSize);
                     break;
@@ -166,7 +166,7 @@ namespace S5GameServer
         {
             if (stream.CanWrite)
             {
-                if (msg.Code != MessageCode.RSAEXCHANGE)
+                if (msg.Code != MessageCode.RSAEXCHANGE && msg.Code != MessageCode.STILLALIVE)
                     Console.WriteLine("OUT: " + msg.ToString());
 
                 var data = msg.Serialize();
@@ -196,7 +196,7 @@ namespace S5GameServer
         static Message StillAlive = new Message(MessageType.GSMessage, MessageCode.STILLALIVE, null, 3, 8);
         protected override void CallMessageHandler(Message msg)
         {
-            if (msg.Code != MessageCode.RSAEXCHANGE)
+            if (msg.Code != MessageCode.RSAEXCHANGE && msg.Code != MessageCode.STILLALIVE)
                 Console.WriteLine(" IN: " + msg.ToString());
 
             if (msg.Code == MessageCode.RSAEXCHANGE)
@@ -217,7 +217,7 @@ namespace S5GameServer
                 if (server.LobbyHandlers.TryGetValue(lobbyCode, out handler))
                     handler(clientHandler, msg);
                 else
-                    Console.WriteLine("Unhandled LobbyMessage [" + lobbyCode.ToString() + "]!");
+                    Console.WriteLine("Unhandled LobbyMessage [{0}] in {1}!", lobbyCode.ToString(), (typeof(T)).Name);
             }
             else
             {
@@ -225,7 +225,7 @@ namespace S5GameServer
                 if (server.MessageHandlers.TryGetValue(msg.Code, out handler))
                     handler(clientHandler, msg);
                 else
-                    Console.WriteLine("Unhandled Message [" + msg.Code.ToString() + "]!");
+                    Console.WriteLine("Unhandled Message [{0}] in {1}!", msg.Code.ToString(), (typeof(T)).Name);
             }
         }
     }

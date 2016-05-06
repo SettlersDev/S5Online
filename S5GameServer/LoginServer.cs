@@ -40,7 +40,7 @@ namespace S5GameServer
         [Handler(MessageCode.JOINWAITMODULE)]
         protected void JoinWaitModule(Message msg)
         {
-            Connection.Send(msg.SuccessResponse(new DNodeList { ServerConfig.Instance.HostName, new DNodeBinary(40001) }));
+            Connection.Send(msg.SuccessResponse(new DNodeList { ServerConfig.Instance.HostName, new DNodeBinary(Constants.WAITMODULE_SERVER_PORT) }));
         }
 
 

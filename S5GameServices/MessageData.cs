@@ -75,6 +75,17 @@ namespace S5GameServices
             base.Add(dn);
         }
 
+        public void Add(IEnumerable<IDNode> nodes)
+        {
+            if (nodes == null)
+                return;
+
+            var dn = new DNodeList();
+            foreach (var obj in nodes)
+                dn.Add(obj);
+            base.Add(dn);
+        }
+
 
         public static DNodeList Parse(byte[] data)
         {

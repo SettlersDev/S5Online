@@ -1,4 +1,5 @@
-﻿using System;
+﻿using S5GameServices;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -34,12 +35,22 @@ namespace PacketAnalyzer
 
             Array.Sort(files);
             foreach (string file in files)
-                data += (Path.GetExtension(file) == ".yaml" ? ProcessYamlStream(file) : ProcessFile(file)) + Environment.NewLine;
+            {
+                var parts = Path.GetFileName(file).Split('.');
+                if (parts.Contains("cdk"))
+                    data += ProcessYamlStream(file, true);
+                else if (parts.Contains("yaml"))
+                    data += ProcessYamlStream(file, false);
+                else
+                    data += ProcessBinFile(file);
+
+                data += Environment.NewLine;
+            }
 
             tbOutput.Text = data;
         }
 
-        string ProcessFile(string file)
+        string ProcessBinFile(string file)
         {
             string info = file + Environment.NewLine;
             try
@@ -57,7 +68,7 @@ namespace PacketAnalyzer
             return info;
         }
 
-        string ProcessYamlStream(string file)
+        string ProcessYamlStream(string file, bool cdKey)
         {
             string info = file + Environment.NewLine;
             try
@@ -73,10 +84,18 @@ namespace PacketAnalyzer
                     var peerData = Convert.FromBase64String(b64Data);
                     try
                     {
-                        var msgList = S5GameServices.Message.ParseIncoming(peerData);
-
-                        foreach (var msg in msgList)
+                        if (cdKey)
+                        {
+                            var msg = new CDKeyMessage(peerData);
                             info += dir + msg.ToString() + Environment.NewLine;
+                        }
+                        else
+                        {
+                            var msgList = S5GameServices.Message.ParseIncoming(peerData);
+
+                            foreach (var msg in msgList)
+                                info += dir + msg.ToString() + Environment.NewLine;
+                        }
                     }
                     catch (Exception ex) { info += dir + "!! EXECPTION: " + ex.Message + Environment.NewLine; }
                 }

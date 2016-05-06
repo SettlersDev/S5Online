@@ -46,8 +46,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CDKeyServer.cs" />
+    <Compile Include="Constants.cs" />
     <Compile Include="InitServer.cs" />
     <Compile Include="IRCServer.cs" />
+    <Compile Include="LadderLogin.cs" />
+    <Compile Include="LadderServer.cs" />
+    <Compile Include="Lobby.cs" />
+    <Compile Include="LobbyServer.cs" />
     <Compile Include="LoginServer.cs" />
     <Compile Include="PlayerAccount.cs" />
     <Compile Include="Program.cs" />

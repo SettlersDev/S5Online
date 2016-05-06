@@ -111,7 +111,9 @@ namespace IrcD
 
         private void RegisterComplete()
         {
+#if DEBUG
             Logger.Log($"New User: {Usermask}");
+#endif
 
             Registered = true;
             if (IsService)
