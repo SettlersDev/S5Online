@@ -52,7 +52,7 @@ namespace S5GameServer
                 for (;;)
                 {
                     var client = tcp.AcceptTcpClient();
-                    Console.WriteLine("new client " + client.Client.RemoteEndPoint.ToString());
+                    Console.WriteLine("new client {0} at {1}", client.Client.RemoteEndPoint.ToString(), (typeof(T)).Name);
                     var chandler = Activator.CreateInstance<T>();
                     var conn = new ClientConnection<T>(this, chandler);
                     ThreadPool.QueueUserWorkItem(conn.HandleClient, client);
@@ -117,6 +117,8 @@ namespace S5GameServer
             socket = tcpConn.Client;
             stream = tcpConn.GetStream();
 
+            var endpointDbg = tcpConn.Client.RemoteEndPoint.ToString();
+
             while (tcpConn.Client.Connected)
             {
                 SocketError se;
@@ -125,7 +127,7 @@ namespace S5GameServer
 
                 if (!recvResult.AsyncWaitHandle.WaitOne(Server.TimeoutMS, false)) { Console.WriteLine("timeout header"); break; }
 
-                if (socket.EndReceive(recvResult, out se) != 6) { Console.WriteLine("header len != 6"); break; }
+                if (socket.EndReceive(recvResult, out se) != 6) { break; }
 
                 if (se != SocketError.Success) { LogSocketError(se); break; }
 
@@ -149,7 +151,7 @@ namespace S5GameServer
 
                 CallMessageHandler(Message.ParseIncoming(buffer, BlowfishContext).First());
             }
-            Console.WriteLine("close client");
+            Console.WriteLine("close client {0} at {1}", endpointDbg, this.GetType().GetGenericArguments()[0].Name);
             ClientHandler.Disconnect();
             tcpConn.Close();
         }
@@ -217,7 +219,7 @@ namespace S5GameServer
                 if (server.LobbyHandlers.TryGetValue(lobbyCode, out handler))
                     handler(clientHandler, msg);
                 else
-                    Console.WriteLine("Unhandled LobbyMessage [{0}] in {1}!", lobbyCode.ToString(), (typeof(T)).Name);
+                    ImportantPrint("Unhandled LobbyMessage [{0}] in {1}!", lobbyCode.ToString(), (typeof(T)).Name);
             }
             else
             {
@@ -225,8 +227,15 @@ namespace S5GameServer
                 if (server.MessageHandlers.TryGetValue(msg.Code, out handler))
                     handler(clientHandler, msg);
                 else
-                    Console.WriteLine("Unhandled Message [{0}] in {1}!", msg.Code.ToString(), (typeof(T)).Name);
+                    ImportantPrint("Unhandled Message [{0}] in {1}!", msg.Code.ToString(), (typeof(T)).Name);
             }
+        }
+
+        protected void ImportantPrint(string format, params object[] vals)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine(format, vals);
+            Console.ResetColor();
         }
     }
 }

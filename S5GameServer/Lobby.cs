@@ -13,6 +13,8 @@ namespace S5GameServer
         public int LobbyID { get; protected set; }
 
         public List<PlayerAccount> Players = new List<PlayerAccount>();
+        public Dictionary<int, GameRoom> Rooms = new Dictionary<int, GameRoom>();
+        protected int nextRoomID = -100;
 
         protected Lobby(string name, int id)
         {
@@ -31,7 +33,22 @@ namespace S5GameServer
         {
             LobbyMessage?.Invoke(this, msg);
         }
-        
+
+        public GameRoom CreateRoom(string name, byte[] gameInfo, PlayerAccount host)
+        {
+            var room = new GameRoom(name, nextRoomID, LobbyID, gameInfo, host);
+            Rooms.Add(nextRoomID, room);
+            nextRoomID--;
+            return room;
+        }
+
+        public GameRoom GetRoom(int roomID)
+        {
+            GameRoom gr = null;
+            Rooms.TryGetValue(roomID, out gr);
+            return gr;
+        }
+
 
         #region static
 
@@ -64,14 +81,27 @@ namespace S5GameServer
     {
         public string Name { get; protected set; }
         public int ID { get; protected set; }
+        protected int lobbyID;
 
         public List<PlayerAccount> Players = new List<PlayerAccount>();
         public PlayerAccount Host { get; protected set; }
         public byte[] GameInformation { get; protected set; }
-        
+
+        public GameRoom(string name, int id, int lobbyId, byte[] gameInfo, PlayerAccount host)
+        {
+            Name = name;
+            ID = id;
+            lobbyID = lobbyId;
+            GameInformation = gameInfo;
+            Host = host;
+           // Players.Add(host);
+        }
+
         public DNodeList RoomInfo
         {
-            get { return new DNodeList {  }; }
+            //["7" "yoq4711yoq's Spiel-20:21:46" "-126" "51" "871" "2098" "1" "yoq4711yoq" "SETTLERSHOK" "SETTLERSHOK" Bin{00 2C 6B 02 02 00 00 00 73 DF DD E9 D8 2C 6B 02} "0" "8" "2" "0" "0" "SHOKPC1.05" "SHOKPC1.05" "84.115.212.253" "10.9.9.9"]
+            
+            get { return new DNodeList { 7, Name, ID, Constants.LOBBY_SERVER_ID, lobbyID, 2098, 1, Host.Username, "SETTLERSHOK", "SETTLERSHOK", GameInformation, 0, 8, 2, 0, 0, "SHOKPC1.05", "SHOKPC1.05", Host.PublicIP, Host.LocalIP }; }
         }
 
         public event EventHandler<Message> RoomMessage;
@@ -80,6 +110,6 @@ namespace S5GameServer
         {
             RoomMessage?.Invoke(this, msg);
         }
-        
+
     }
 }

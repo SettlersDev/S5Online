@@ -9,7 +9,8 @@ namespace S5GameServer
     class LobbyServerConnection : ClientHandler
     {
         PlayerAccount account;
-        Lobby lobby;
+        Lobby actLobby;
+        GameRoom actRoom;
 
         [Handler(MessageCode.LOBBYSERVERLOGIN)]
         protected void LobbyServerLogin(Message msg)
@@ -33,14 +34,16 @@ namespace S5GameServer
         }
 
         [Handler(LobbyMessageCode.LB_LOBBYINFO)]
-        protected void LobbyRoomInfo(Message msg)
+        protected void LobbyInfo(Message msg)
         {
             account.GameIdentifier = msg.LobbyData[0].AsBinary;
             Connection.Send(new Message(LobbyMessageCode.LB_GROUPINFO, new DNodeList
             {
-                lobby.LobbyID, 448, lobby.LobbyInfo, new DNodeList(), lobby.Players.Select((p) => p.PlayerInfo)
+                actLobby.LobbyID, 448, actLobby.LobbyInfo,
+                actLobby.Rooms.Values.Select((r) => r.RoomInfo),
+                actLobby.Players.Select((p) => p.PlayerInfo)
             }));
-            lobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPJOIN, UserInfoBlock(lobby.LobbyID)));
+            actLobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPJOIN, UserInfoBlock(actLobby.LobbyID)));
             //lobby.Broadcast(new Message((LobbyMessageCode)66, new DNodeList { account.GameIdentifier }));
             Connection.Send(msg.LobbySuccessResponse());
         }
@@ -52,13 +55,13 @@ namespace S5GameServer
             var unknown = msg.LobbyData[1].AsString;
             var unknown448 = msg.LobbyData[2].AsInt;
 
-            lobby = Lobby.Get(lobbyID);
-            if (lobby != null)
+            actLobby = Lobby.Get(lobbyID);
+            if (actLobby != null)
             {
-                if (!lobby.Players.Contains(account))
+                if (!actLobby.Players.Contains(account))
                 {
-                    lobby.Players.Add(account);
-                    lobby.LobbyMessage += Lobby_LobbyMessage;
+                    actLobby.Players.Add(account);
+                    actLobby.LobbyMessage += ForwardMessage;
                 }
                 Connection.Send(msg.LobbySuccessResponse(new DNodeList { lobbyID }));
             }
@@ -67,38 +70,93 @@ namespace S5GameServer
         [Handler(LobbyMessageCode.LB_GROUPLEAVE)]
         protected void GroupLeave(Message msg)
         {
-            if (msg.LobbyData[0].AsInt == lobby.LobbyID)
+            var id = msg.LobbyData[0].AsInt;
+
+            if (id == actLobby.LobbyID)
             {
                 LeaveLobby();
-                Connection.Send(msg.LobbySuccessResponse(new DNodeList { lobby.LobbyID }));
             }
-            else //leaving room
+            else if (id == actRoom.ID)
             {
-                throw new NotImplementedException();
+                LeaveRoom();
             }
+            else
+                throw new NotImplementedException();
+
+            Connection.Send(msg.LobbySuccessResponse(new DNodeList { id }));
         }
 
+        [Handler(LobbyMessageCode.LB_ROOMCREATE)]
+        protected void RoomCreate(Message msg)
+        {
+            //GAM 4 | 2 LOBBY_MSG(209)[LB_ROOMCREATE("12"), ["871" "yoq4711yoq's Spiel-20:21:46" "SETTLERSHOK" "7" "8" "0" Bin{ 00 2C 6B 02 02 00 00 00 73 DF DD E9 D8 2C 6B 02} "" "SHOKPC1.05" "SHOKPC1.05" Bin{ }]]
+            //SRV 12 | 4 LOBBY_MSG(209)[LB_GSSUCCESS("38"), ["12"["-126" "yoq4711yoq's Spiel-20:21:46" "51"]]]
+            //SRV 12 | 4 LOBBY_MSG(209)[LB_GROUPNEW("54"), ["7" "yoq4711yoq's Spiel-20:21:46" "-126" "51" "871" "2098" "1" "yoq4711yoq" "SETTLERSHOK" "SETTLERSHOK" Bin{ 00 2C 6B 02 02 00 00 00 73 DF DD E9 D8 2C 6B 02} "0" "8" "1" "0" "0" "SHOKPC1.05" "SHOKPC1.05" "84.115.212.253" "10.9.9.9"]]
+
+            var roomName = msg.LobbyData[1].AsString;
+            var numA = msg.LobbyData[3].AsInt;
+            var numB = msg.LobbyData[4].AsInt;
+            var numC = msg.LobbyData[5].AsInt;
+            Console.WriteLine("CreateRoom({0}|{1}|{2})", numA, numB, numC);
+
+            var gameInfo = msg.LobbyData[6].AsBinary;
+
+            var room = actLobby.CreateRoom(roomName, gameInfo, account);
+            Connection.Send(msg.LobbySuccessResponse(new DNodeList { room.ID, roomName, Constants.LOBBY_SERVER_ID }));
+            actLobby.Broadcast(new Message(LobbyMessageCode.LB_GROUPNEW, room.RoomInfo));
+        }
+
+        [Handler(LobbyMessageCode.LB_ROOMJOIN)]
+        protected void RoomJoin(Message msg)
+        {
+            /*
+                GAM 4|2 LOBBY_MSG(209) [LB_ROOMJOIN("24"), ["-126" "" "0" "0" "SHOKPC1.05"]]
+                SRV 12|4 LOBBY_MSG(209) [LB_GSSUCCESS("38"), ["24" ["-126"]]]
+                SRV 12|4 LOBBY_MSG(209) [LB_MEMBERGROUPJOIN("50"), ["yoq4711yoq" "0" "-126" "84.115.212.253" "10.9.9.9" Bin{02 00 00 00 73 DF DD E9 00 00 00 00 00 00 00 00} "0"]]
+            */
+
+            var roomID = msg.LobbyData[0].AsInt;
+            var room = actLobby.GetRoom(roomID);
+            if (room == null)
+                return;
+
+            if (!room.Players.Contains(account))
+            {
+                room.Players.Add(account);
+                room.RoomMessage += ForwardMessage;
+            }
+            actRoom = room;
+            Connection.Send(msg.LobbySuccessResponse(new DNodeList { roomID }));
+            room.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPJOIN, UserInfoBlock(roomID)));
+        }
 
         protected DNodeList UserInfoBlock(int group)
         {
             return new DNodeList { account.Username, 0, group, account.PublicIP, account.LocalIP, account.GameIdentifier, 0 };
         }
 
-        protected void Lobby_LobbyMessage(object sender, Message msg)
+        protected void ForwardMessage(object sender, Message msg)
         {
             Connection.Send(msg);
         }
 
+        protected void LeaveRoom()
+        {
+            actRoom.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPLEAVE, new DNodeList { account.Username, actRoom.ID }));
+            actRoom.Players.Remove(account);
+            actRoom.RoomMessage -= ForwardMessage;
+        }
+
         protected void LeaveLobby()
         {
-            lobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPLEAVE, new DNodeList { account.Username, lobby.LobbyID }));
-            lobby.Players.Remove(account);
-            lobby.LobbyMessage -= Lobby_LobbyMessage;
+            actLobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPLEAVE, new DNodeList { account.Username, actLobby.LobbyID }));
+            actLobby.Players.Remove(account);
+            actLobby.LobbyMessage -= ForwardMessage;
         }
 
         public override void Disconnect()
         {
-            if (account == null || lobby == null)
+            if (account == null || actLobby == null)
                 return;
 
             LeaveLobby();

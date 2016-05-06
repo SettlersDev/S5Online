@@ -56,7 +56,8 @@ namespace S5GameServer
             var language = msg.Data[0].AsString;
             Connection.Send(msg.SuccessResponse(new DNodeList
             {
-                "\n  Hello " + account.Username + " [" + account.Language + "]",
+                "", //do not use!
+                "\n  Hello " + account.Username + " [" + account.Language + "]\n" + 
                 "\n  Welcome to yoq's Testserver!\n  Currently working:\n    - CDKey\n    - IRC\n    - first level proxy connection"
             }));
         }
