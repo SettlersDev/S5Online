@@ -9,8 +9,8 @@ namespace S5GameServer
     class LobbyServerConnection : ClientHandler
     {
         PlayerAccount account;
-        Lobby actLobby;
-        GameRoom actRoom;
+        Lobby curLobby;
+        GameRoom curRoom;
 
         [Handler(MessageCode.LOBBYSERVERLOGIN)]
         protected void LobbyServerLogin(Message msg)
@@ -20,7 +20,7 @@ namespace S5GameServer
             var localIP = msg.Data[2].AsString;
             var localSubnet = msg.Data[3].AsString;
             var unknownNum2 = msg.Data[4].AsInt;
-            Console.WriteLine("lobby server login ({0} | {1})", unknownNum, unknownNum2);
+            Connection.WriteDebug("lobby server login ({0} | {1})", unknownNum, unknownNum2);
 
             account = PlayerAccount.Get(username);
             if (account != null)
@@ -39,11 +39,11 @@ namespace S5GameServer
             account.GameIdentifier = msg.LobbyData[0].AsBinary;
             Connection.Send(new Message(LobbyMessageCode.LB_GROUPINFO, new DNodeList
             {
-                actLobby.LobbyID, 448, actLobby.LobbyInfo,
-                actLobby.Rooms.Values.Select((r) => r.RoomInfo),
-                actLobby.Players.Select((p) => p.PlayerInfo)
+                curLobby.LobbyID, 448, curLobby.LobbyInfo,
+                curLobby.Rooms.Values.Select((r) => r.RoomInfo),
+                curLobby.Players.Select((p) => p.PlayerInfo)
             }));
-            actLobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPJOIN, UserInfoBlock(actLobby.LobbyID)));
+            curLobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPJOIN, UserInfoBlock(curLobby.LobbyID)));
             //lobby.Broadcast(new Message((LobbyMessageCode)66, new DNodeList { account.GameIdentifier }));
             Connection.Send(msg.LobbySuccessResponse());
         }
@@ -55,13 +55,13 @@ namespace S5GameServer
             var unknown = msg.LobbyData[1].AsString;
             var unknown448 = msg.LobbyData[2].AsInt;
 
-            actLobby = Lobby.Get(lobbyID);
-            if (actLobby != null)
+            curLobby = Lobby.Get(lobbyID);
+            if (curLobby != null)
             {
-                if (!actLobby.Players.Contains(account))
+                if (!curLobby.Players.Contains(account))
                 {
-                    actLobby.Players.Add(account);
-                    actLobby.LobbyMessage += ForwardMessage;
+                    curLobby.Players.Add(account);
+                    curLobby.LobbyMessage += ForwardMessage;
                 }
                 Connection.Send(msg.LobbySuccessResponse(new DNodeList { lobbyID }));
             }
@@ -81,12 +81,8 @@ namespace S5GameServer
             {
                 LeaveRoom();
                 Connection.Send(msg.LobbySuccessResponse(new DNodeList { id }));
-                if (actRoom.Players.Count == 0)
-                {
-                    actLobby.Broadcast(new Message(LobbyMessageCode.LB_GROUPREMOVE, new DNodeList { actRoom.ID }));
-                    actLobby.Rooms.Remove(actRoom.ID);
-                }
-                actRoom = null;
+                CheckRoomEmpty();
+                curRoom = null;
             }
             else
                 throw new NotImplementedException();
@@ -104,13 +100,13 @@ namespace S5GameServer
             var numA = msg.LobbyData[3].AsInt;
             var numB = msg.LobbyData[4].AsInt;
             var numC = msg.LobbyData[5].AsInt;
-            Console.WriteLine("CreateRoom({0}|{1}|{2})", numA, numB, numC);
+            Connection.WriteDebug("CreateRoom({0}|{1}|{2})", numA, numB, numC);
 
             var gameInfo = msg.LobbyData[6].AsBinary;
 
-            var room = actLobby.CreateRoom(roomName, gameInfo, account);
+            var room = curLobby.CreateRoom(roomName, gameInfo, account);
             Connection.Send(msg.LobbySuccessResponse(new DNodeList { room.ID, roomName, Constants.LOBBY_SERVER_ID }));
-            actLobby.Broadcast(new Message(LobbyMessageCode.LB_GROUPNEW, room.RoomInfo));
+            curLobby.Broadcast(new Message(LobbyMessageCode.LB_GROUPNEW, room.RoomInfo));
         }
 
         [Handler(LobbyMessageCode.LB_ROOMJOIN)]
@@ -123,7 +119,7 @@ namespace S5GameServer
             */
 
             var roomID = msg.LobbyData[0].AsInt;
-            var room = actLobby.GetRoom(roomID);
+            var room = curLobby.GetRoom(roomID);
             if (room == null)
                 return;
 
@@ -132,11 +128,11 @@ namespace S5GameServer
                 room.Players.Add(account);
                 room.RoomMessage += ForwardMessage;
             }
-            actRoom = room;
+            curRoom = room;
             Connection.Send(msg.LobbySuccessResponse(new DNodeList { roomID }));
-            room.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPJOIN, UserInfoBlock(roomID)));
+            curLobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPJOIN, UserInfoBlock(roomID)));
         }
-        
+
         [Handler(LobbyMessageCode.LB_UPDATEGROUPSETTINGS)]
         protected void UpdateRoomSetting(Message msg)
         {
@@ -145,7 +141,7 @@ namespace S5GameServer
             */
 
             var roomID = msg.LobbyData[0].AsInt;
-            var room = actLobby.GetRoom(roomID);
+            var room = curLobby.GetRoom(roomID);
             if (room == null)
                 return;
 
@@ -166,31 +162,31 @@ namespace S5GameServer
         [Handler(LobbyMessageCode.LB_GAMESTART)]
         protected void GameStart(Message msg)
         {
-            Connection.Send(msg.LobbySuccessResponse(new DNodeList { actRoom.ID }));
+            Connection.Send(msg.LobbySuccessResponse(new DNodeList { curRoom.ID }));
         }
 
         [Handler(LobbyMessageCode.LB_GAMEREADY)]
         protected void GameReady(Message msg)
         {
-            Connection.Send(msg.LobbySuccessResponse(new DNodeList { actRoom.ID }));
-            actRoom.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { actRoom.ID, 2106 }));
+            Connection.Send(msg.LobbySuccessResponse(new DNodeList { curRoom.ID }));
+            curRoom.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, 2106 }));
             //[LB_GAMESTARTED("56"), ["-110" Bin{} "0" "84.115.212.253" "10.9.9.9"]]
-            actRoom.Broadcast(new Message(LobbyMessageCode.LB_GAMESTARTED, new DNodeList { actRoom.ID, new byte[0], 0, actRoom.Host.PublicIP, actRoom.Host.LocalIP }));
-            actRoom.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { actRoom.ID, 2106 }));
+            curRoom.Broadcast(new Message(LobbyMessageCode.LB_GAMESTARTED, new DNodeList { curRoom.ID, new byte[0], 0, curRoom.Host.PublicIP, curRoom.Host.LocalIP }));
+            curRoom.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, 2106 }));
         }
 
         [Handler(LobbyMessageCode.LB_GAMECONNECTED)]
         protected void GameConnected(Message msg)
         {
-            actRoom.Broadcast(new Message(LobbyMessageCode.LB_PLAYERUPDATESTATUS, new DNodeList { account.Username, 2 }));
+            curRoom.Broadcast(new Message(LobbyMessageCode.LB_PLAYERUPDATESTATUS, new DNodeList { account.Username, 2 }));
         }
 
         [Handler(LobbyMessageCode.LB_GAMEFINISHED)]
         protected void GameFinished(Message msg)
         {
             Connection.Send(new Message(LobbyMessageCode.LB_WAKEUP, new DNodeList()));
-            actRoom.Broadcast(new Message(LobbyMessageCode.LB_PLAYERUPDATESTATUS, new DNodeList { account.Username, 0 }));
-            Connection.Send(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { actRoom.ID, 2098 }));
+            curRoom.Broadcast(new Message(LobbyMessageCode.LB_PLAYERUPDATESTATUS, new DNodeList { account.Username, 0 }));
+            Connection.Send(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, 2098 }));
         }
 
 
@@ -208,22 +204,37 @@ namespace S5GameServer
 
         protected void LeaveRoom()
         {
-            actRoom.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPLEAVE, new DNodeList { account.Username, actRoom.ID }));
-            actRoom.Players.Remove(account);
-            actRoom.RoomMessage -= ForwardMessage;
+            curLobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPLEAVE, new DNodeList { account.Username, curRoom.ID }));
+            curRoom.Players.Remove(account);
+            curRoom.RoomMessage -= ForwardMessage;
         }
 
         protected void LeaveLobby()
         {
-            actLobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPLEAVE, new DNodeList { account.Username, actLobby.LobbyID }));
-            actLobby.Players.Remove(account);
-            actLobby.LobbyMessage -= ForwardMessage;
+            curLobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPLEAVE, new DNodeList { account.Username, curLobby.LobbyID }));
+            curLobby.Players.Remove(account);
+            curLobby.LobbyMessage -= ForwardMessage;
+        }
+
+        protected void CheckRoomEmpty()
+        {
+            if (curRoom.Players.Count == 0)
+            {
+                curLobby.Broadcast(new Message(LobbyMessageCode.LB_GROUPREMOVE, new DNodeList { curRoom.ID }));
+                curLobby.Rooms.Remove(curRoom.ID);
+            }
         }
 
         public override void Disconnect()
         {
-            if (account == null || actLobby == null)
+            if (account == null || curLobby == null)
                 return;
+
+            if (curRoom != null)
+            {
+                LeaveRoom();
+                CheckRoomEmpty();
+            }
 
             LeaveLobby();
         }

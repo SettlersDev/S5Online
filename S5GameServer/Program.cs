@@ -11,7 +11,12 @@ namespace S5GameServer
     {
         static void Main(string[] args)
         {
-            Console.SetWindowSize(200, 40);
+            if (Type.GetType("Mono.Runtime") == null)
+            {
+                Console.SetWindowSize(200, 40);
+                Console.BufferWidth = 800;
+            }
+
             Console.WriteLine("\n\t-----------------------------");
             Console.WriteLine("\t      ~ UbiCom Rebuild ~");
             Console.WriteLine("\t-----------------------------");

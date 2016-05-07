@@ -43,23 +43,23 @@ namespace S5GameServer
                     MessageHandlers.Add(handlerAttrib.Code, handlerDelegate);
             }
 
-            Task.Run(() =>
-            {
-                var ipep = new IPEndPoint(IPAddress.Any, Port);
-                var tcp = new TcpListener(ipep);
-                tcp.Start();
-
-                for (;;)
-                {
-                    var client = tcp.AcceptTcpClient();
-                    Console.WriteLine("new client {0} at {1}", client.Client.RemoteEndPoint.ToString(), (typeof(T)).Name);
-                    var chandler = Activator.CreateInstance<T>();
-                    var conn = new ClientConnection<T>(this, chandler);
-                    ThreadPool.QueueUserWorkItem(conn.HandleClient, client);
-                }
-            });
+            Socket listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            listener.Bind(new IPEndPoint(IPAddress.Any, Port));
+            listener.Listen(10);
+            listener.BeginAccept(NewClient, listener);
         }
 
+        void NewClient(IAsyncResult ar)
+        {
+            var listener = ar.AsyncState as Socket;
+            var clientSocket = listener.EndAccept(ar);
+            listener.BeginAccept(NewClient, listener); //accept next client
+
+            clientSocket.ReceiveTimeout = TimeoutMS;
+            clientSocket.SendTimeout = TimeoutMS;
+            var clientHandler = Activator.CreateInstance<T>();
+            var conn = new ClientConnection<T>(this, clientHandler, clientSocket);
+        }
     }
 
     [AttributeUsage(AttributeTargets.Method)]
@@ -93,67 +93,157 @@ namespace S5GameServer
 
     public abstract class ClientConnection
     {
-        byte[] buffer = new byte[1024];
-        TcpClient tcpConn;
-        Socket socket;
-        NetworkStream stream;
-        RsaKeyExchange keyEx = new RsaKeyExchange();
+        protected byte[] buffer = new byte[1024];
+        protected Socket socket;
+        protected SocketError sockErr;
+        protected bool isDisconnected = false;
+        protected string endPointDbg, connTypeDbg;
 
-        public string IP { get { return (tcpConn.Client.RemoteEndPoint as IPEndPoint).Address.ToString(); } }
+        protected RsaKeyExchange keyEx = new RsaKeyExchange();
+
+        public string IP { get { return (socket.RemoteEndPoint as IPEndPoint).Address.ToString(); } }
         public Blowfish BlowfishContext = null;
 
         protected abstract void CallMessageHandler(Message msg);
         protected abstract MessageServer Server { get; }
         protected abstract ClientHandler ClientHandler { get; }
 
-        protected void LogSocketError(SocketError se)
+        public void WriteDebug(string format, params object[] vals)
         {
-            Console.WriteLine("Socket Error: " + se.ToString());
+            var str = connTypeDbg + format;
+            if (vals.Length == 0)
+                Console.WriteLine(str);
+            else
+                Console.WriteLine(str, vals);
         }
 
-        public void HandleClient(object state)
+        public void WriteError(string format, params object[] vals)
         {
-            tcpConn = state as TcpClient;
-            socket = tcpConn.Client;
-            stream = tcpConn.GetStream();
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            WriteDebug(format, vals);
+            Console.ResetColor();
+        }
 
-            var endpointDbg = tcpConn.Client.RemoteEndPoint.ToString();
+        protected void HandleException(Exception e)
+        {
+            if (e is ObjectDisposedException)
+                WriteError("Socket Disposed");
+            else
+                WriteError("Exception: {0}", e.ToString());
 
-            while (tcpConn.Client.Connected)
+            Disconnect();
+        }
+
+        protected bool SocketErrors()
+        {
+            if (sockErr == SocketError.Success)
+                return false;
+
+            WriteError("Socket Error: {0}", sockErr.ToString());
+            Disconnect();
+            return true;
+        }
+
+        protected bool IncorrectLength(int receivedLen, int correctLen)
+        {
+            if (receivedLen == correctLen)
+                return false;
+
+            if (receivedLen != 0) //normal disconnect
+                WriteError("Incorrect Length: Is {0}B should be {1}B!", receivedLen, correctLen);
+
+            Disconnect();
+            return true;
+        }
+
+        protected void Disconnect()
+        {
+            if (isDisconnected)
+                return;
+
+            isDisconnected = true;
+            WriteDebug("Close Client {0}", endPointDbg);
+            ClientHandler.Disconnect();
+            try { socket.Close(); } catch { }
+        }
+
+        protected void StartReceiveHeader()
+        {
+            try
             {
-                SocketError se;
-                var recvResult = socket.BeginReceive(buffer, 0, 6, SocketFlags.None, out se, null, null);
-                if (se != SocketError.Success) { LogSocketError(se); break; }
+                socket.BeginReceive(buffer, 0, 6, SocketFlags.None, out sockErr, ReceivedHeader, null);
+                SocketErrors();
+            }
+            catch (Exception e) { HandleException(e); }
+        }
 
-                if (!recvResult.AsyncWaitHandle.WaitOne(Server.TimeoutMS, false)) { Console.WriteLine("timeout header"); break; }
-
-                if (socket.EndReceive(recvResult, out se) != 6) { break; }
-
-                if (se != SocketError.Success) { LogSocketError(se); break; }
+        protected void ReceivedHeader(IAsyncResult ar)
+        {
+            try
+            {
+                var recvdBytes = socket.EndReceive(ar, out sockErr);
+                if (SocketErrors() || IncorrectLength(recvdBytes, 6))
+                    return;
 
                 int msgSize = buffer[2] + 256 * buffer[1] + 256 * 256 * buffer[0];
+                if (msgSize == 6)
+                {
+                    CallMessageHandler(Message.ParseIncoming(buffer, BlowfishContext).First());
+                    StartReceiveHeader();
+                }
                 if (msgSize > 6)
                 {
-                    recvResult = socket.BeginReceive(buffer, 6, msgSize - 6, SocketFlags.None, out se, null, null);
-                    if (se != SocketError.Success) { LogSocketError(se); break; }
-
-                    if (!recvResult.AsyncWaitHandle.WaitOne(Server.TimeoutMS, false)) { Console.WriteLine("timeout body"); break; }
-
-                    if (socket.EndReceive(recvResult, out se) != msgSize - 6) { Console.WriteLine("body len invalid"); break; }
-
-                    if (se != SocketError.Success) { LogSocketError(se); break; }
+                    socket.BeginReceive(buffer, 6, msgSize - 6, SocketFlags.None, out sockErr, ReceivedBody, msgSize - 6);
+                    SocketErrors();
                 }
                 else if (msgSize < 6)
-                {
-                    Console.WriteLine("Message len = {0} WAT", msgSize);
-                    break;
-                }
+                    WriteError("Message len = {0} WAT", msgSize);
+
+            }
+            catch (Exception e) { HandleException(e); }
+        }
+
+        protected void ReceivedBody(IAsyncResult ar)
+        {
+            try
+            {
+                var recvdBytes = socket.EndReceive(ar, out sockErr);
+                if (SocketErrors() || IncorrectLength(recvdBytes, (int)ar.AsyncState))
+                    return;
 
                 CallMessageHandler(Message.ParseIncoming(buffer, BlowfishContext).First());
+                StartReceiveHeader();
             }
-            Console.WriteLine("close client {0} at {1}", endpointDbg, this.GetType().GetGenericArguments()[0].Name);
-            ClientHandler.Disconnect();
-            tcpConn.Close();
+            catch (Exception e) { HandleException(e); }
+        }
+
+        public void Send(Message msg)
+        {
+            try
+            {
+                if (isDisconnected)
+                    return;
+
+                if (msg.Code != MessageCode.RSAEXCHANGE && msg.Code != MessageCode.STILLALIVE)
+                    WriteDebug("OUT: " + msg.ToString());
+
+                var data = msg.Serialize();
+
+                socket.BeginSend(data, 0, data.Length, SocketFlags.None, out sockErr, SentData, data.Length);
+                SocketErrors();
+            }
+            catch (Exception e) { HandleException(e); }
+        }
+
+        protected void SentData(IAsyncResult ar)
+        {
+            try
+            {
+                var sentBytes = socket.EndSend(ar, out sockErr);
+                if (SocketErrors() || IncorrectLength(sentBytes, (int)ar.AsyncState))
+                    return;
+            }
+            catch (Exception e) { HandleException(e); }
         }
 
         protected void HandleKeyExchange(Message msg)
@@ -163,27 +253,6 @@ namespace S5GameServer
             BlowfishContext = new Blowfish(keyEx.Key);
             Send(resp);
         }
-
-        public void Send(Message msg)
-        {
-            try
-            {
-                if (stream.CanWrite)
-                {
-                    if (msg.Code != MessageCode.RSAEXCHANGE && msg.Code != MessageCode.STILLALIVE)
-                        Console.WriteLine("OUT: " + msg.ToString());
-
-                    var data = msg.Serialize();
-                    stream.Write(data, 0, data.Length);
-                }
-                else
-                    Console.WriteLine("stream closed, cant respond!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Send() Error: " + ex.Message);
-            }
-        }
     }
 
     public class ClientConnection<T> : ClientConnection where T : ClientHandler
@@ -191,11 +260,19 @@ namespace S5GameServer
         MessageServer<T> server;
         T clientHandler;
 
-        public ClientConnection(MessageServer<T> serv, T cHandler)
+        public ClientConnection(MessageServer<T> serv, T cHandler, Socket clientSock)
         {
             server = serv;
             clientHandler = cHandler;
             clientHandler.Connection = this;
+            socket = clientSock;
+            StartReceiveHeader();
+            endPointDbg = clientSock.RemoteEndPoint.ToString();
+            connTypeDbg = (typeof(T)).Name;
+            if (connTypeDbg.Length > 21)
+                connTypeDbg = connTypeDbg.Substring(0, 21);
+            connTypeDbg = connTypeDbg.PadRight(22);
+            WriteDebug("New Client {0}", endPointDbg);
         }
 
         protected override MessageServer Server { get { return server; } }
@@ -206,7 +283,7 @@ namespace S5GameServer
         protected override void CallMessageHandler(Message msg)
         {
             if (msg.Code != MessageCode.RSAEXCHANGE && msg.Code != MessageCode.STILLALIVE)
-                Console.WriteLine(" IN: " + msg.ToString());
+                WriteDebug("IN:  " + msg.ToString());
 
             if (msg.Code == MessageCode.RSAEXCHANGE)
             {
@@ -226,7 +303,7 @@ namespace S5GameServer
                 if (server.LobbyHandlers.TryGetValue(lobbyCode, out handler))
                     handler(clientHandler, msg);
                 else
-                    ImportantPrint("Unhandled LobbyMessage [{0}] in {1}!", lobbyCode.ToString(), (typeof(T)).Name);
+                    WriteError("Unhandled LobbyMessage [{0}]!", lobbyCode.ToString());
             }
             else
             {
@@ -234,15 +311,8 @@ namespace S5GameServer
                 if (server.MessageHandlers.TryGetValue(msg.Code, out handler))
                     handler(clientHandler, msg);
                 else
-                    ImportantPrint("Unhandled Message [{0}] in {1}!", msg.Code.ToString(), (typeof(T)).Name);
+                    WriteError("Unhandled Message [{0}]!", msg.Code.ToString());
             }
-        }
-
-        protected void ImportantPrint(string format, params object[] vals)
-        {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine(format, vals);
-            Console.ResetColor();
         }
     }
 }

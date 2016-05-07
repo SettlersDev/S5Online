@@ -45,10 +45,7 @@ namespace S5GameServer
         }
         public bool CheckPassword(string password)
         {
-            var watch = System.Diagnostics.Stopwatch.StartNew();
             var inputHash = (new Rfc2898DeriveBytes(password, salt)).GetBytes(20);
-            watch.Stop();
-            Console.WriteLine("PBKDF2 time: {0}ms", watch.ElapsedMilliseconds);
 
             for (int i = 0; i < inputHash.Length; i++)
                 if (passwordHash[i] != inputHash[i])

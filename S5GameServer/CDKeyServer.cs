@@ -35,9 +35,9 @@ namespace S5GameServer
             return token;
         }
 
-        public static void Run(int port = 44000)
+        public static void Run()
         {
-            var ipep = new IPEndPoint(IPAddress.Any, port);
+            var ipep = new IPEndPoint(IPAddress.Any, ServerConfig.Instance.CDKeyPort);
             udpClient = new UdpClient(ipep);
             udpClient.BeginReceive(HandlePacket, udpClient);
         }
@@ -69,7 +69,7 @@ namespace S5GameServer
                     response = login1Response;
                     clientID = ToID(req.Data[3][0].AsBinary);
                     response.Data[3][1][0].AsBinary = ToToken(clientID, 20);
-                    await Task.Delay(250); //crazy racecondition in S5: the host needs to have set up his XNetwork before the clients send their AuthTokens to verify, 
+                    await Task.Delay(300); //crazy racecondition in S5: the host needs to have set up his XNetwork before the clients send their AuthTokens to verify, 
                     break;
                 case 4:
                     response = login2Response;
@@ -78,7 +78,9 @@ namespace S5GameServer
                     break;
                 case 6: response = logoutResponse; break;
                 case 7: return; //heartbeat
-                default: throw new Exception("Unknown CDKey request: " + req.Data.ToString());
+                default:
+                    Console.WriteLine("Unknown CDKey request: " + req.Data.ToString());
+                    return;
             }
 
             var udpConnId = req.Data[0].AsString;
