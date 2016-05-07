@@ -52,14 +52,9 @@ namespace S5GameServer
         [Handler(MessageCode.GETMOTD)]
         protected void GetMOTD(Message msg)
         {
-            //ubisoftmessage, gamemessage
+            //ubisoftmessage (DO NOT USE), gamemessage
             var language = msg.Data[0].AsString;
-            Connection.Send(msg.SuccessResponse(new DNodeList
-            {
-                "", //do not use!
-                "\n  Hello " + account.Username + " [" + account.Language + "]\n" + 
-                "\n  Welcome to yoq's Testserver!\n  Currently working:\n    - CDKey\n    - IRC\n    - first level proxy connection"
-            }));
+            Connection.Send(msg.SuccessResponse(new DNodeList { "", ServerConfig.Instance.MOTD }));
         }
 
         [Handler(MessageCode.PLAYERINFO)]

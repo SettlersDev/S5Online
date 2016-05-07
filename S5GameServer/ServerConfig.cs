@@ -21,6 +21,10 @@ namespace S5GameServer
         public string CDKeyHost = "thesettlers.tk";
         public string AccountsFile = "accounts.xml";
 
+
+        [NonSerialized]
+        public string MOTD;
+
         [IgnoreDataMember]
         static ServerConfig inst;
         public static ServerConfig Instance
@@ -42,6 +46,11 @@ namespace S5GameServer
                             inst = (ServerConfig)ser.ReadObject(file);
                         }
                     }
+
+                    if (File.Exists(MOTDFile))
+                        inst.MOTD = File.ReadAllText(MOTDFile).Replace(' ', ' ');
+                    else
+                        inst.MOTD = "Write this message to " + MOTDFile;
                 }
 
                 return inst;
@@ -59,5 +68,8 @@ namespace S5GameServer
 
         [IgnoreDataMember]
         const string ConfigFile = "config.xml";
+
+        [IgnoreDataMember]
+        const string MOTDFile = "motd.txt";
     }
 }
