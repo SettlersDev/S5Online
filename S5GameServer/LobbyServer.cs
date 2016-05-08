@@ -125,6 +125,7 @@ namespace S5GameServer
 
             if (!room.Players.Contains(account))
             {
+                account.Room = room;
                 room.Players.Add(account);
                 room.RoomMessage += ForwardMessage;
             }
@@ -169,23 +170,22 @@ namespace S5GameServer
         protected void GameReady(Message msg)
         {
             Connection.Send(msg.LobbySuccessResponse(new DNodeList { curRoom.ID }));
-            curRoom.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, 2106 }));
             //[LB_GAMESTARTED("56"), ["-110" Bin{} "0" "84.115.212.253" "10.9.9.9"]]
-            curRoom.Broadcast(new Message(LobbyMessageCode.LB_GAMESTARTED, new DNodeList { curRoom.ID, new byte[0], 0, curRoom.Host.PublicIP, curRoom.Host.LocalIP }));
-            curRoom.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, 2106 }));
+            curLobby.Broadcast(new Message(LobbyMessageCode.LB_GAMESTARTED, new DNodeList { curRoom.ID, new byte[0], 0, curRoom.Host.PublicIP, curRoom.Host.LocalIP }));
+            curLobby.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, 2106 }));
         }
 
         [Handler(LobbyMessageCode.LB_GAMECONNECTED)]
         protected void GameConnected(Message msg)
         {
-            curRoom.Broadcast(new Message(LobbyMessageCode.LB_PLAYERUPDATESTATUS, new DNodeList { account.Username, 2 }));
+            curLobby.Broadcast(new Message(LobbyMessageCode.LB_PLAYERUPDATESTATUS, new DNodeList { account.Username, 2 }));
         }
 
         [Handler(LobbyMessageCode.LB_GAMEFINISHED)]
         protected void GameFinished(Message msg)
         {
             Connection.Send(new Message(LobbyMessageCode.LB_WAKEUP, new DNodeList()));
-            curRoom.Broadcast(new Message(LobbyMessageCode.LB_PLAYERUPDATESTATUS, new DNodeList { account.Username, 0 }));
+            curLobby.Broadcast(new Message(LobbyMessageCode.LB_PLAYERUPDATESTATUS, new DNodeList { account.Username, 0 }));
             Connection.Send(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, 2098 }));
         }
 
@@ -206,6 +206,7 @@ namespace S5GameServer
         {
             curLobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPLEAVE, new DNodeList { account.Username, curRoom.ID }));
             curRoom.Players.Remove(account);
+            account.Room = null;
             curRoom.RoomMessage -= ForwardMessage;
         }
 

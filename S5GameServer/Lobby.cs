@@ -77,7 +77,7 @@ namespace S5GameServer
         #endregion
     }
 
-    class GameRoom
+    public class GameRoom
     {
         public string Name { get; protected set; }
         public int ID { get; protected set; }

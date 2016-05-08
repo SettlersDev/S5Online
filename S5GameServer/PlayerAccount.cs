@@ -80,9 +80,12 @@ namespace S5GameServer
         [NonSerialized]
         public byte[] GameIdentifier;
 
+        [NonSerialized]
+        public GameRoom Room;
+
         public DNodeList PlayerInfo
         {
-            get { return new DNodeList { username, 0, PublicIP, LocalIP, GameIdentifier, new DNodeList(), -1, 0 }; }
+            get { return new DNodeList { username, 0, PublicIP, LocalIP, GameIdentifier, new DNodeList { Room?.ID }, -1, 0 }; }
         }
 
         #endregion

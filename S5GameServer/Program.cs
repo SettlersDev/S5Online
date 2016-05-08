@@ -35,8 +35,8 @@ namespace S5GameServer
             LadderWaitModule.Run();
             LadderServer.Run();
 
-            while (Console.ReadKey(true).Key != ConsoleKey.Q)
-                Console.WriteLine("Press Q to exit!");
+            Console.WriteLine("Press ENTER to exit!");
+            Console.ReadLine();
         }
     }
 }
