@@ -37,12 +37,7 @@ namespace S5GameServer
         protected void LobbyInfo(Message msg)
         {
             account.GameIdentifier = msg.LobbyData[0].AsBinary;
-            Connection.Send(new Message(LobbyMessageCode.LB_GROUPINFO, new DNodeList
-            {
-                curLobby.LobbyID, 448, curLobby.LobbyInfo,
-                curLobby.Rooms.Values.Select((r) => r.RoomInfo),
-                curLobby.Players.Select((p) => p.PlayerInfo)
-            }));
+            SendGroupInfo(msg);
             curLobby.Broadcast(new Message(LobbyMessageCode.LB_MEMBERGROUPJOIN, UserInfoBlock(curLobby.LobbyID)));
             //lobby.Broadcast(new Message((LobbyMessageCode)66, new DNodeList { account.GameIdentifier }));
             Connection.Send(msg.LobbySuccessResponse());
@@ -151,10 +146,10 @@ namespace S5GameServer
             {
                 // WAT DO?!
                 //SRV 12|4 LOBBY_MSG(209) [LB_GSSUCCESS("38"), ["31" ["-408"]]]
-                // maybe SRV 12|4 LOBBY_MSG(209) [LB_GROUPCONFIGUPDATE("57"), ["-408" "2099"]]
+                // maybe SRV 12|4 LOBBY_MSG(209) [LB_GROUPCONFIGUPDATE("57"), ["-408" "2099"]], via UpdateConfig()
 
                 Connection.Send(msg.LobbySuccessResponse(new DNodeList { roomID }));
-                room.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { roomID, 2099 }));
+                UpdateRoomConfig(2099);
             }
             else
                 throw new NotImplementedException();
@@ -171,8 +166,9 @@ namespace S5GameServer
         {
             Connection.Send(msg.LobbySuccessResponse(new DNodeList { curRoom.ID }));
             //[LB_GAMESTARTED("56"), ["-110" Bin{} "0" "84.115.212.253" "10.9.9.9"]]
-            curLobby.Broadcast(new Message(LobbyMessageCode.LB_GAMESTARTED, new DNodeList { curRoom.ID, new byte[0], 0, curRoom.Host.PublicIP, curRoom.Host.LocalIP }));
-            curLobby.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, 2106 }));
+            curRoom.Broadcast(new Message(LobbyMessageCode.LB_GAMESTARTED, new DNodeList { curRoom.ID, new byte[0], 0, curRoom.Host.PublicIP, curRoom.Host.LocalIP }));
+            //curLobby.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, 2106 }));
+            UpdateRoomConfig(2106);
         }
 
         [Handler(LobbyMessageCode.LB_GAMECONNECTED)]
@@ -186,7 +182,19 @@ namespace S5GameServer
         {
             Connection.Send(new Message(LobbyMessageCode.LB_WAKEUP, new DNodeList()));
             curLobby.Broadcast(new Message(LobbyMessageCode.LB_PLAYERUPDATESTATUS, new DNodeList { account.Username, 0 }));
-            Connection.Send(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, 2098 }));
+            //Connection.Send(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, 2098 }));
+            UpdateRoomConfig(2098);
+        }
+
+        [Handler(LobbyMessageCode.LB_GROUPINFOGET)]
+        protected void SendGroupInfo(Message msg)
+        {
+            Connection.Send(new Message(LobbyMessageCode.LB_GROUPINFO, new DNodeList
+            {
+                curLobby.LobbyID, 448, curLobby.LobbyInfo,
+                curLobby.Rooms.Values.Select((r) => r.RoomInfo),
+                curLobby.Players.Select((p) => p.PlayerInfo)
+            }));
         }
 
 
@@ -200,6 +208,12 @@ namespace S5GameServer
         protected void ForwardMessage(object sender, Message msg)
         {
             Connection.Send(msg);
+        }
+
+        public void UpdateRoomConfig(int newConfig)
+        {
+            curRoom.GroupConfig = newConfig;
+            curLobby.Broadcast(new Message(LobbyMessageCode.LB_GROUPCONFIGUPDATE, new DNodeList { curRoom.ID, curRoom.GroupConfig }));
         }
 
         protected void LeaveRoom()
