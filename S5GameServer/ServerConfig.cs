@@ -47,14 +47,24 @@ namespace S5GameServer
                         }
                     }
 
-                    if (File.Exists(MOTDFile))
-                        inst.MOTD = File.ReadAllText(MOTDFile).Replace(' ', ' ');
-                    else
-                        inst.MOTD = "Write this message to " + MOTDFile;
+                    var fsw = new FileSystemWatcher();
+                    fsw.Path = Path.GetDirectoryName(Path.GetFullPath(MOTDFile));
+                    fsw.Filter = Path.GetFileName(MOTDFile);
+                    fsw.Changed += MOTD_Changed;
+                    fsw.EnableRaisingEvents = true;
+                    MOTD_Changed(fsw, new FileSystemEventArgs(WatcherChangeTypes.Changed, fsw.Path, fsw.Filter));
                 }
 
                 return inst;
             }
+        }
+
+        private static void MOTD_Changed(object sender, FileSystemEventArgs e)
+        {
+            if (File.Exists(MOTDFile))
+                inst.MOTD = File.ReadAllText(MOTDFile).Replace(' ', ' ');
+            else
+                inst.MOTD = "Write this message to " + MOTDFile;
         }
 
         public static void WriteConfig()
