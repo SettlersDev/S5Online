@@ -285,7 +285,10 @@ namespace S5GameServer
         protected override void CallMessageHandler(Message msg)
         {
             if (msg.Code != MessageCode.RSAEXCHANGE && msg.Code != MessageCode.STILLALIVE)
-                WriteDebug("IN:  " + msg.ToString());
+                if (msg.Code == MessageCode.LOGIN)
+                    WriteDebug("IN:  LOGIN \"{0}\", password not shown", msg.Data[0].AsString);
+                else
+                    WriteDebug("IN:  " + msg.ToString());
 
             if (msg.Code == MessageCode.RSAEXCHANGE)
             {
