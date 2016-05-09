@@ -29,23 +29,17 @@ namespace S5GameServer
 
         static void BuildInitResponse()
         {
-            var template =    "[Servers]\n"
+            var template = "[Servers]\n"
                             + "RouterIP0={0}\n"
                             + "RouterPort0={1}\n"
-                            + "RouterLauncherPort0=40005\n" //??
                             + "RouterIP1={0}\n"
                             + "RouterPort1={1}\n"
-                            + "RouterLauncherPort1=40005\n" //??
                             + "IRCIP0={0}\n"
                             + "IRCPort0={2}\n"
-                            + "CDKeyServerIP0={5}\n" //{0}\n"
-                            + "CDKeyServerPort0={3}\n"
-                            + "NATServerIP0=216.98.52.136\n" //NAT???
-                            + "NATServerPort0=45000\n"
-                            + "NATServerIP1=216.98.52.133\n"
-                            + "NATServerPort1=45000";
+                            + "CDKeyServerIP0={4}\n" //{0}\n"
+                            + "CDKeyServerPort0={3}";
             var cfg = ServerConfig.Instance;
-            initResponse = string.Format(template, cfg.HostName, cfg.RouterPort, cfg.IRCPort, cfg.CDKeyPort, cfg.NATPort, cfg.CDKeyHost);
+            initResponse = string.Format(template, cfg.HostName, cfg.RouterPort, cfg.IRCPort, cfg.CDKeyPort, cfg.CDKeyHost);
         }
 
         static string HandleRequest(HttpListenerRequest req)

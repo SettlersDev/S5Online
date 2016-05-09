@@ -97,7 +97,7 @@ namespace S5GameServer
         protected Socket socket;
         protected SocketError sockErr;
         protected bool isDisconnected = false;
-        protected string endPointDbg, connTypeDbg;
+        protected string connTypeDbg;
 
         protected RsaKeyExchange keyEx = new RsaKeyExchange();
 
@@ -162,7 +162,7 @@ namespace S5GameServer
                 return;
 
             isDisconnected = true;
-            WriteDebug("Close Client {0}", endPointDbg);
+            WriteDebug("Close Client");
             ClientHandler.Disconnect();
             try { socket.Close(); } catch { }
         }
@@ -266,13 +266,15 @@ namespace S5GameServer
             clientHandler = cHandler;
             clientHandler.Connection = this;
             socket = clientSock;
-            StartReceiveHeader();
-            endPointDbg = clientSock.RemoteEndPoint.ToString();
+
+            var endPointDbg = clientSock.RemoteEndPoint.ToString();
             connTypeDbg = (typeof(T)).Name;
             if (connTypeDbg.Length > 21)
                 connTypeDbg = connTypeDbg.Substring(0, 21);
-            connTypeDbg = connTypeDbg.PadRight(22);
-            WriteDebug("New Client {0}", endPointDbg);
+            connTypeDbg = connTypeDbg.PadRight(22) + endPointDbg.PadRight(22);
+            WriteDebug("New Client");
+
+            StartReceiveHeader();
         }
 
         protected override MessageServer Server { get { return server; } }

@@ -17,13 +17,13 @@ namespace S5GameServer
                 Console.BufferWidth = 800;
             }
 
-            Console.WriteLine("\n\t-----------------------------");
-            Console.WriteLine("\t      ~ UbiCom Rebuild ~");
-            Console.WriteLine("\t-----------------------------");
-            Console.WriteLine("\t for Settlers V\t\tv0.1");
+            Console.WriteLine("\n\t-------------------------------");
+            Console.WriteLine("\t       ~ UbiCom Rebuild ~");
+            Console.WriteLine("\t-------------------------------");
+            Console.WriteLine("\t for Settlers V\t\tv{0}", VersionHelper.GetVersion());
 
 
-            Lobby.AddLobbies("Main Lobby", "Developer's Playground", "Test Lobby 007");
+            Lobby.AddLobbies(ServerConfig.Instance.Lobbies);
 
             InitServer.Run();
             if (ServerConfig.Instance.HostName == ServerConfig.Instance.CDKeyHost)
@@ -35,7 +35,7 @@ namespace S5GameServer
             LadderWaitModule.Run();
             LadderServer.Run();
 
-            Console.WriteLine("Press ENTER to exit!");
+            Console.WriteLine("\n\nPress ENTER to exit!");
             Console.ReadLine();
         }
     }

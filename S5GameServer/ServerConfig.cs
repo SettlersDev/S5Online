@@ -16,10 +16,12 @@ namespace S5GameServer
         public int RouterPort = 40000;
         public int IRCPort = 16668;
         public int CDKeyPort = 44000;
-        public int NATPort = 45000;
         public int InitPort = 40080;
         public string CDKeyHost = "thesettlers.tk";
         public string AccountsFile = "accounts.xml";
+
+        [DataMember(IsRequired = false)]
+        public string[] Lobbies = { " The Settlers: Heritage of Kings", "The Settlers: Fog Realm", "The Settlers: Legends" };
 
 
         [NonSerialized]
@@ -61,10 +63,9 @@ namespace S5GameServer
 
         private static void MOTD_Changed(object sender, FileSystemEventArgs e)
         {
-            if (File.Exists(MOTDFile))
-                inst.MOTD = File.ReadAllText(MOTDFile).Replace(' ', ' ');
-            else
-                inst.MOTD = "Write this message to " + MOTDFile;
+            var lines = File.Exists(MOTDFile) ? File.ReadAllLines(MOTDFile).ToList() : new List<string> { "Write this message to " + MOTDFile };
+            lines.Add("Server v" + VersionHelper.GetVersion() + ", " + VersionHelper.GetCopyright());
+            inst.MOTD = "\n" + lines.Select((s) => "    " + s).Aggregate((l1, l2) => l1 + "\n" + l2).Replace(' ', (char)0xA0);
         }
 
         public static void WriteConfig()
