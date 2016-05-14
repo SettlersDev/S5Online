@@ -1,4 +1,4 @@
-﻿using S5GameServices;
+using S5GameServices;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,6 +13,10 @@ using System.Threading.Tasks;
 
 namespace S5GameServer
 {
+    public class LogWriter
+    {
+        public static StreamWriter file = new System.IO.StreamWriter("Server.log", true);
+    }
     public class MessageServer
     {
         public int TimeoutMS;
@@ -110,11 +114,17 @@ namespace S5GameServer
 
         public void WriteDebug(string format, params object[] vals)
         {
-            var str = connTypeDbg + format;
+            var str = /*connTypeDbg +*/ format;
             if (vals.Length == 0)
+            {
                 Console.WriteLine(str);
+                LogWriter.file.WriteLine(DateTime.Now + "  " + str);
+            }
             else
+            {
                 Console.WriteLine(str, vals);
+                LogWriter.file.WriteLine(DateTime.Now + "  " + str);
+            }
         }
 
         public void WriteError(string format, params object[] vals)
@@ -127,9 +137,9 @@ namespace S5GameServer
         protected void HandleException(Exception e)
         {
             if (e is ObjectDisposedException)
-                WriteError("Socket Disposed");
+                WriteError("IFO: 0|0 Socket Disposed");
             else
-                WriteError("Exception: {0}", e.ToString());
+                WriteError("IFO: 0|0 Exception: {0}", e.ToString());
 
             Disconnect();
         }
@@ -139,7 +149,7 @@ namespace S5GameServer
             if (sockErr == SocketError.Success)
                 return false;
 
-            WriteError("Socket Error: {0}", sockErr.ToString());
+            WriteError("IFO: 0|0 Socket Error: {0}", sockErr.ToString());
             Disconnect();
             return true;
         }
@@ -150,7 +160,7 @@ namespace S5GameServer
                 return false;
 
             if (receivedLen != 0) //normal disconnect
-                WriteError("Incorrect Length: Is {0}B should be {1}B!", receivedLen, correctLen);
+                WriteError("IFO: 0|0 Incorrect Length: Is {0}B should be {1}B!", receivedLen, correctLen);
 
             Disconnect();
             return true;
@@ -162,7 +172,7 @@ namespace S5GameServer
                 return;
 
             isDisconnected = true;
-            WriteDebug("Close Client");
+            WriteDebug("IFO: 0|0 Client disconnect");
             ClientHandler.Disconnect();
             try { socket.Close(); } catch { }
         }
@@ -197,7 +207,7 @@ namespace S5GameServer
                     SocketErrors();
                 }
                 else if (msgSize < 6)
-                    WriteError("Message len = {0} WAT", msgSize);
+                    WriteError("IFO: 0|0 Message len = {0} WAT", msgSize);
 
             }
             catch (Exception e) { HandleException(e); }
@@ -225,7 +235,7 @@ namespace S5GameServer
                     return;
 
                 if (msg.Code != MessageCode.RSAEXCHANGE && msg.Code != MessageCode.STILLALIVE)
-                    WriteDebug("OUT: " + msg.ToString());
+                    WriteDebug("SRV: " + msg.ToString());
 
                 var data = msg.Serialize();
 
@@ -272,7 +282,7 @@ namespace S5GameServer
             if (connTypeDbg.Length > 21)
                 connTypeDbg = connTypeDbg.Substring(0, 21);
             connTypeDbg = connTypeDbg.PadRight(22) + endPointDbg.PadRight(22);
-            WriteDebug("New Client");
+            WriteDebug("IFO: 0|0 New Client");
 
             StartReceiveHeader();
         }
@@ -284,21 +294,23 @@ namespace S5GameServer
         static Message StillAlive = new Message(MessageType.GSMessage, MessageCode.STILLALIVE, null, 3, 8);
         protected override void CallMessageHandler(Message msg)
         {
+
             if (msg.Code != MessageCode.RSAEXCHANGE && msg.Code != MessageCode.STILLALIVE)
                 if (msg.Code == MessageCode.LOGIN)
-                    WriteDebug("IN:  LOGIN \"{0}\", password not shown", msg.Data[0].AsString);
+                    WriteDebug("GAM: LOGIN [Username: [\"{0}\"], Password: [\"Hidden\"]]", msg.Data[0].AsString);
                 else
-                    WriteDebug("IN:  " + msg.ToString());
-
+                    WriteDebug("GAM: " + msg.ToString());
             if (msg.Code == MessageCode.RSAEXCHANGE)
             {
                 HandleKeyExchange(msg);
                 return;
             }
+            
             else if (msg.Code == MessageCode.STILLALIVE)
             {
                 Send(StillAlive);
                 return;
+                
             }
 
             if (msg.Code == MessageCode.LOBBY_MSG)
@@ -308,7 +320,7 @@ namespace S5GameServer
                 if (server.LobbyHandlers.TryGetValue(lobbyCode, out handler))
                     handler(clientHandler, msg);
                 else
-                    WriteError("Unhandled LobbyMessage [{0}]!", lobbyCode.ToString());
+                    WriteError("IFO: 0|0 Unhandled LobbyMessage [{0}]!", lobbyCode.ToString());
             }
             else
             {
@@ -316,7 +328,7 @@ namespace S5GameServer
                 if (server.MessageHandlers.TryGetValue(msg.Code, out handler))
                     handler(clientHandler, msg);
                 else
-                    WriteError("Unhandled Message [{0}]!", msg.Code.ToString());
+                    WriteError("IFO: 0|0 Unhandled Message [{0}]!", msg.Code.ToString());
             }
         }
     }
