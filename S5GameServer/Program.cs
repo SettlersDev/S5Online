@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,6 +19,7 @@ namespace S5GameServer
 
             Console.WriteLine("\n\t-------------------------------");
             Console.WriteLine("\t       ~ UbiCom Rebuild ~");
+            Console.WriteLine("\t       ~ Project Online ~");
             Console.WriteLine("\t-------------------------------");
             Console.WriteLine("\t for Settlers V\t\tv{0}", VersionHelper.GetVersion());
 
@@ -35,7 +36,9 @@ namespace S5GameServer
             LadderWaitModule.Run();
             LadderServer.Run();
 
-            Console.WriteLine("\n\nPress ENTER to exit!");
+            Console.WriteLine();
+            Console.WriteLine("\t PRESS 'ENTER' to exit!");
+            Console.WriteLine();
             Console.ReadLine();
         }
     }
