@@ -1,4 +1,4 @@
-﻿using S5GameServices;
+using S5GameServices;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +11,21 @@ namespace S5GameServer
 
     class WaitModuleConnection : ClientHandler
     {
+
         PlayerAccount account;
+
+        protected void Unlogg()
+        {
+            LoginClientHandler.LoggedPlayers.Remove(account);
+        }
+
+        public override void Disconnect()
+        {
+            if (account == null)
+                return;
+            Unlogg();
+        }
+
 
         [Handler(MessageCode.LOGINWAITMODULE)]
         protected void LoginWaitModuleCmd(Message msg)
@@ -66,7 +80,9 @@ namespace S5GameServer
             if (acc == null)
                 Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary(1) }));
             else
+            {
                 Connection.Send(msg.SuccessResponse(new DNodeList { acc.IrcAlias, acc.Username, acc.FirstName, acc.LastName, acc.Language, acc.Email, acc.PublicIP }));
+            }
         }
 
         [Handler(LobbyMessageCode.LB_LOBBYLOGIN)]
@@ -115,8 +131,8 @@ namespace S5GameServer
                 case 2:
                     Connection.Send(new Message(MessageCode.NEWQUERY, new DNodeList { (int)MessageCode.GSSUCCESS, msg.Data }));
                     break;
+                    
             }
-
         }
     }
 
