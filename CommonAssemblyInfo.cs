@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 
 [assembly: AssemblyCompany("d3 Inc.")]
-[assembly: AssemblyCopyright("created by yoq © 2016, BSD open source license")]
+[assembly: AssemblyCopyright("created by yoq Â© 2016, BSD open source license")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -17,7 +17,7 @@ using System.Runtime.InteropServices;
 //      Build Number
 //      Revision 
 
-[assembly: AssemblyVersion("0.2.1")]
+[assembly: AssemblyVersion("0.2.3")]
 
 static class VersionHelper
 {
