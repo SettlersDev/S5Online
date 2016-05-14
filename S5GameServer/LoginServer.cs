@@ -1,4 +1,4 @@
-﻿using S5GameServices;
+using S5GameServices;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,24 +7,38 @@ using System.Threading.Tasks;
 
 namespace S5GameServer
 {
-    class LoginClientHandler : ClientHandler
+    public class LoginClientHandler : ClientHandler
     {
-
+        public static List<PlayerAccount> LoggedPlayers = new List<PlayerAccount>() { PlayerAccount.Get("GameRaiderLP") };
+        PlayerAccount account;
         [Handler(MessageCode.LOGIN)]
         protected void LoginCmd(Message msg)
         {
             var username = msg.Data[0].AsString;
             var password = msg.Data[1].AsString;
             var game = msg.Data[2].AsString; // "SHOKPC1.05"
-
+            account = PlayerAccount.Get(username);
             var acc = PlayerAccount.Get(username);
             if (acc != null)
             {
                 if (acc.CheckPassword(password))
-                    Connection.Send(msg.SuccessResponse());
+                {
+                    if (!LoggedPlayers.Contains(account) == true)
+                    {
+                        LoggedPlayers.Add(account);
+                        Connection.Send(msg.SuccessResponse());
+                    }
+                    else
+                    {
+                        Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary(3) }));
+                    }
+
+                }
                 else
+                { 
                     Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary(2) }));
-            }
+                }
+        }
             else
             {
                 Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary(4) }));
@@ -77,7 +91,8 @@ namespace S5GameServer
              * 2    username not according to rules
              * 3    username contains illegal words
              * */
-        }
+             
+    }
     }
 
     static class LoginServer
@@ -91,5 +106,6 @@ namespace S5GameServer
             };
             ms.Run();
         }
+
     }
 }
