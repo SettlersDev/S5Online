@@ -11,21 +11,15 @@ namespace S5GameServer
 
     class WaitModuleConnection : ClientHandler
     {
-
         PlayerAccount account;
-
-        protected void Unlogg()
-        {
-            LoginClientHandler.LoggedPlayers.Remove(account);
-        }
 
         public override void Disconnect()
         {
             if (account == null)
                 return;
-            Unlogg();
-        }
 
+            PlayerAccount.LoggedInAccounts.Remove(account);
+        }
 
         [Handler(MessageCode.LOGINWAITMODULE)]
         protected void LoginWaitModuleCmd(Message msg)

@@ -9,46 +9,39 @@ namespace S5GameServer
 {
     public class LoginClientHandler : ClientHandler
     {
-        public static List<PlayerAccount> LoggedPlayers = new List<PlayerAccount>() { PlayerAccount.Get("GameRaiderLP") };
-        PlayerAccount account;
+        enum LoginResponses : int
+        {
+            GeneralFail = 1,
+            WrongPassword = 2,
+            AlreadyLoggedIn = 3,
+            InvalidUsername = 4
+        }
+
         [Handler(MessageCode.LOGIN)]
         protected void LoginCmd(Message msg)
         {
             var username = msg.Data[0].AsString;
             var password = msg.Data[1].AsString;
             var game = msg.Data[2].AsString; // "SHOKPC1.05"
-            account = PlayerAccount.Get(username);
+
             var acc = PlayerAccount.Get(username);
             if (acc != null)
             {
                 if (acc.CheckPassword(password))
                 {
-                    if (!LoggedPlayers.Contains(account) == true)
+                    if (!PlayerAccount.LoggedInAccounts.Contains(acc))
                     {
-                        LoggedPlayers.Add(account);
+                        PlayerAccount.LoggedInAccounts.Add(acc);
                         Connection.Send(msg.SuccessResponse());
                     }
                     else
-                    {
-                        Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary(3) }));
-                    }
-
+                        Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary((int)LoginResponses.AlreadyLoggedIn) }));
                 }
                 else
-                { 
-                    Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary(2) }));
-                }
-        }
-            else
-            {
-                Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary(4) }));
-
-                /* 1    logging in failed
-                 * 2    wrong password
-                 * 3    already logged in
-                 * 4    invalid username
-                 * */
+                    Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary((int)LoginResponses.WrongPassword) }));
             }
+            else
+                Connection.Send(msg.FailResponse(new DNodeList { new DNodeBinary((int)LoginResponses.InvalidUsername) }));
         }
 
         [Handler(MessageCode.JOINWAITMODULE)]
@@ -91,8 +84,8 @@ namespace S5GameServer
              * 2    username not according to rules
              * 3    username contains illegal words
              * */
-             
-    }
+
+        }
     }
 
     static class LoginServer

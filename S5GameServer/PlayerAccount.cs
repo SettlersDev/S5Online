@@ -100,6 +100,8 @@ namespace S5GameServer
         protected static RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
 
         protected static Dictionary<string, PlayerAccount> accountDB;
+        
+        public static List<PlayerAccount> LoggedInAccounts = new List<PlayerAccount>();
 
         public static PlayerAccount Get(string accountName)
         {
