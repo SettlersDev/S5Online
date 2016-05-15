@@ -14,6 +14,7 @@ namespace S5GameServer
 {
     public static class CDKeyServer
     {
+        static ISimpleLogger logger = NoLogger.Instance;
         static Random rng = new Random();
         static UdpClient udpClient;
 
@@ -37,6 +38,12 @@ namespace S5GameServer
 
         public static void Run()
         {
+            Run(NoLogger.Instance);
+        }
+
+        public static void Run(ISimpleLogger logger)
+        {
+            CDKeyServer.logger = logger;
             var ipep = new IPEndPoint(IPAddress.Any, ServerConfig.Instance.CDKeyPort);
             udpClient = new UdpClient(ipep);
             udpClient.BeginReceive(HandlePacket, udpClient);
@@ -50,7 +57,8 @@ namespace S5GameServer
             udpClient.BeginReceive(HandlePacket, udpClient);
 
             var req = new CDKeyMessage(reqData);
-            //Console.WriteLine("CDK IN :\t" + req.Data.ToString());
+            var endpointDbg = remoteEndpoint.ToString().PadRight(22);
+            logger.WriteDebug("CDKeyServer           {0}GAM: {1}", endpointDbg, req.Data.ToString());
 
             CDKeyMessage response;
             int clientID;
@@ -79,13 +87,14 @@ namespace S5GameServer
                 case 6: response = logoutResponse; break;
                 case 7: return; //heartbeat
                 default:
-                    Console.WriteLine("Unknown CDKey request: " + req.Data.ToString());
+
+                    logger.WriteError("CDKeyServer           {0}Unknown CDKey request: {1}", endpointDbg, req.Data.ToString());
                     return;
             }
 
             var udpConnId = req.Data[0].AsString;
             response.Data[0].AsString = udpConnId;
-            //Console.WriteLine("CDK OUT:\t" + response.Data.ToString());
+            logger.WriteDebug("CDKeyServer           {0}SRV: {1}", endpointDbg, response.Data.ToString());
 
             var respData = response.Serialize();
             await udpClient.SendAsync(respData, respData.Length, remoteEndpoint);

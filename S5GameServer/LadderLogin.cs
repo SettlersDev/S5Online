@@ -30,13 +30,4 @@ namespace S5GameServer
                 Connection.Send(msg.SuccessResponse(new DNodeList { account.Username, ServerConfig.Instance.HostName, Constants.LADDER_SERVER_PORT }));
         }
     }
-
-    static class LadderWaitModule
-    {
-        public static void Run()
-        {
-            var msb = new MessageServer<LadderWaitModuleConnection>() { Port = Constants.LADDER_LOGIN_SERVER_PORT, TimeoutMS = 60000 };
-            msb.Run();
-        }
-    }
 }

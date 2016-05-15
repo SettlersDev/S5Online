@@ -87,18 +87,4 @@ namespace S5GameServer
 
         }
     }
-
-    static class LoginServer
-    {
-        public static void Run()
-        {
-            var ms = new MessageServer<LoginClientHandler>
-            {
-                Port = ServerConfig.Instance.RouterPort,
-                TimeoutMS = 10000
-            };
-            ms.Run();
-        }
-
-    }
 }

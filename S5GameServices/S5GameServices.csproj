@@ -53,6 +53,7 @@
     <Compile Include="MessageServer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RsaKeyExchange.cs" />
+    <Compile Include="SimpleLogger.cs" />
     <Compile Include="XorCrypt.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

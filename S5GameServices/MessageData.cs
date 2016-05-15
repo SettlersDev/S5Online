@@ -251,7 +251,7 @@ namespace S5GameServices
 
         public override string ToString()
         {
-            return "Bin{" + BitConverter.ToString(Data).Replace("-", " ") + "}";
+            return "Bin<" + BitConverter.ToString(Data).Replace("-", " ") + ">";
         }
     }
 }

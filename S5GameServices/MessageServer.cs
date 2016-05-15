@@ -13,14 +13,11 @@ using System.Threading.Tasks;
 
 namespace S5GameServer
 {
-    public class LogWriter
-    {
-        public static StreamWriter file = new System.IO.StreamWriter("Server.log", true);
-    }
     public class MessageServer
     {
-        public int TimeoutMS;
-        public int Port;
+        public int TimeoutMS = 60000;
+        public int Port = -1;
+        public ISimpleLogger Logger = NoLogger.Instance;
     }
 
     public class MessageServer<T> : MessageServer where T : ClientHandler
@@ -114,24 +111,12 @@ namespace S5GameServer
 
         public void WriteDebug(string format, params object[] vals)
         {
-            var str = connTypeDbg + format;
-            if (vals.Length == 0)
-            {
-                Console.WriteLine(str);
-                LogWriter.file.WriteLine(DateTime.Now + "  " + str);
-            }
-            else
-            {
-                Console.WriteLine(str, vals);
-                LogWriter.file.WriteLine(DateTime.Now + "  " + str);
-            }
+            Server.Logger.WriteDebug(connTypeDbg + format, vals);
         }
 
         public void WriteError(string format, params object[] vals)
         {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            WriteDebug(format, vals);
-            Console.ResetColor();
+            Server.Logger.WriteError(connTypeDbg + format, vals);
         }
 
         protected void HandleException(Exception e)

@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 namespace S5GameServer
 {
-
     class LadderConnection : ClientHandler
     {
         PlayerAccount account;
@@ -46,14 +45,6 @@ namespace S5GameServer
                 },
                 new DNodeList { }
             }));
-        }
-    }
-    static class LadderServer
-    {
-        public static void Run()
-        {
-            var msa = new MessageServer<LadderConnection>() { Port = Constants.LADDER_SERVER_PORT, TimeoutMS = 60000 };
-            msa.Run();
         }
     }
 }

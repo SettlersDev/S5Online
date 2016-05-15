@@ -1,4 +1,5 @@
-﻿using System;
+﻿using S5GameServices;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -15,13 +16,18 @@ namespace S5GameServer
 
     public class InitServer
     {
-        
-
+        static ISimpleLogger logger;
         static string initResponse;
         static WebServer ws;
 
         public static void Run()
         {
+            Run(NoLogger.Instance);
+        }
+
+        public static void Run(ISimpleLogger logger)
+        {
+            InitServer.logger = logger;
             BuildInitResponse();
             ws = new WebServer(new[] { "http://*:" + ServerConfig.Instance.InitPort.ToString() + "/" }, HandleRequest);
             ws.Run();
@@ -44,7 +50,7 @@ namespace S5GameServer
 
         static string HandleRequest(HttpListenerRequest req)
         {
-            Console.WriteLine("InitServer: " + req.RawUrl);
+            logger.WriteDebug("InitServer            {0}Request: {1}", req.RemoteEndPoint.ToString().PadRight(22), req.RawUrl);
             return initResponse;
         }
     }

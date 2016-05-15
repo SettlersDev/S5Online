@@ -23,18 +23,21 @@ namespace S5GameServer
             Console.WriteLine("\t-------------------------------");
             Console.WriteLine("\t for Settlers V\t\tv{0}", VersionHelper.GetVersion());
 
+            var logger = new DualLogger("logs/" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".log", true);
 
             Lobby.AddLobbies(ServerConfig.Instance.Lobbies);
 
-            InitServer.Run();
+            InitServer.Run(logger);
             if (ServerConfig.Instance.HostName == ServerConfig.Instance.CDKeyHost)
-                CDKeyServer.Run(); //doesnt work on dev machine, blocks udp port
+                CDKeyServer.Run(logger); //doesn't work on dev machine, blocks udp port
             IRCServer.Run();
-            LoginServer.Run();
-            WaitModuleServer.Run();
-            LobbyServer.Run();
-            LadderWaitModule.Run();
-            LadderServer.Run();
+
+
+            new MessageServer<LoginClientHandler> { Port = ServerConfig.Instance.RouterPort, Logger = logger }.Run();
+            new MessageServer<WaitModuleConnection>() { Port = Constants.WAITMODULE_SERVER_PORT, Logger = logger }.Run();
+            new MessageServer<LobbyServerConnection>() { Port = Constants.LOBBY_SERVER_PORT, Logger = logger }.Run();
+            new MessageServer<LadderWaitModuleConnection>() { Port = Constants.LADDER_LOGIN_SERVER_PORT, Logger = logger }.Run();
+            new MessageServer<LadderConnection>() { Port = Constants.LADDER_SERVER_PORT, Logger = logger }.Run();
 
             Console.WriteLine();
             Console.WriteLine("\t PRESS 'ENTER' to exit!");

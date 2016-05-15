@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 
 namespace S5GameServer
 {
-
     class WaitModuleConnection : ClientHandler
     {
         PlayerAccount account;
@@ -127,15 +126,6 @@ namespace S5GameServer
                     break;
                     
             }
-        }
-    }
-
-    static class WaitModuleServer
-    {
-        public static void Run()
-        {
-            var ms = new MessageServer<WaitModuleConnection>() { Port = Constants.WAITMODULE_SERVER_PORT, TimeoutMS = 60000 };
-            ms.Run();
         }
     }
 }

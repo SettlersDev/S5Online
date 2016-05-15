@@ -254,13 +254,4 @@ namespace S5GameServer
             LeaveLobby();
         }
     }
-
-    static class LobbyServer
-    {
-        public static void Run()
-        {
-            var msa = new MessageServer<LobbyServerConnection>() { Port = Constants.LOBBY_SERVER_PORT, TimeoutMS = 60000 };
-            msa.Run();
-        }
-    }
 }
