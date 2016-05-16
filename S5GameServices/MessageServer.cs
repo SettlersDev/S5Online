@@ -15,7 +15,7 @@ namespace S5GameServer
 {
     public class MessageServer
     {
-        public int TimeoutMS = 60000;
+        public int TimeoutSec = 60;
         public int Port = -1;
         public ISimpleLogger Logger = NoLogger.Instance;
     }
@@ -56,8 +56,8 @@ namespace S5GameServer
             var clientSocket = listener.EndAccept(ar);
             listener.BeginAccept(NewClient, listener); //accept next client
 
-            clientSocket.ReceiveTimeout = TimeoutMS;
-            clientSocket.SendTimeout = TimeoutMS;
+            clientSocket.ReceiveTimeout = TimeoutSec;
+            clientSocket.SendTimeout = TimeoutSec;
             var clientHandler = Activator.CreateInstance<T>();
             var conn = new ClientConnection<T>(this, clientHandler, clientSocket);
         }
@@ -94,6 +94,7 @@ namespace S5GameServer
 
     public abstract class ClientConnection
     {
+        protected Watchdog watchdog;
         protected byte[] buffer = new byte[1024];
         protected Socket socket;
         protected SocketError sockErr;
@@ -159,7 +160,14 @@ namespace S5GameServer
             isDisconnected = true;
             WriteDebug("IFO:     Client Disconnected");
             ClientHandler.Disconnect();
+            watchdog.Dispose();
             try { socket.Close(); } catch { }
+        }
+
+        protected void Timeout()
+        {
+            WriteError("IFO:     Client Timeout, disconnecting");
+            Disconnect();
         }
 
         protected void StartReceiveHeader()
@@ -269,6 +277,8 @@ namespace S5GameServer
             connTypeDbg = connTypeDbg.PadRight(22) + endPointDbg.PadRight(22);
             WriteDebug("IFO:     New Client");
 
+
+            watchdog = new Watchdog(Timeout, server.TimeoutSec);
             StartReceiveHeader();
         }
 
@@ -279,7 +289,7 @@ namespace S5GameServer
         static Message StillAlive = new Message(MessageType.GSMessage, MessageCode.STILLALIVE, null, 3, 8);
         protected override void CallMessageHandler(Message msg)
         {
-
+            watchdog.Reset();
             if (msg.Code != MessageCode.RSAEXCHANGE && msg.Code != MessageCode.STILLALIVE)
                 if (msg.Code == MessageCode.LOGIN)
                     WriteDebug("GAM: LOGIN [Username: [\"{0}\"], Password: [ ~ not shown ~ ]]", msg.Data[0].AsString);
