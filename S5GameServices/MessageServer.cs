@@ -56,8 +56,8 @@ namespace S5GameServer
             var clientSocket = listener.EndAccept(ar);
             listener.BeginAccept(NewClient, listener); //accept next client
 
-            clientSocket.ReceiveTimeout = TimeoutSec;
-            clientSocket.SendTimeout = TimeoutSec;
+            clientSocket.ReceiveTimeout = 60*TimeoutSec;
+            clientSocket.SendTimeout = 60*TimeoutSec;
             var clientHandler = Activator.CreateInstance<T>();
             var conn = new ClientConnection<T>(this, clientHandler, clientSocket);
         }
