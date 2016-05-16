@@ -56,8 +56,8 @@ namespace S5GameServer
             var clientSocket = listener.EndAccept(ar);
             listener.BeginAccept(NewClient, listener); //accept next client
 
-            clientSocket.ReceiveTimeout = 60*TimeoutSec;
-            clientSocket.SendTimeout = 60*TimeoutSec;
+            clientSocket.ReceiveTimeout = 1000 * TimeoutSec;
+            clientSocket.SendTimeout = 1000 * TimeoutSec;
             var clientHandler = Activator.CreateInstance<T>();
             var conn = new ClientConnection<T>(this, clientHandler, clientSocket);
         }
@@ -300,12 +300,12 @@ namespace S5GameServer
                 HandleKeyExchange(msg);
                 return;
             }
-            
+
             else if (msg.Code == MessageCode.STILLALIVE)
             {
                 Send(StillAlive);
                 return;
-                
+
             }
 
             if (msg.Code == MessageCode.LOBBY_MSG)
