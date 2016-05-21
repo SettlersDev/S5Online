@@ -38,8 +38,6 @@ namespace S5GameServer
             var template = "[Servers]\n"
                             + "RouterIP0={0}\n"
                             + "RouterPort0={1}\n"
-                            + "RouterIP1={0}\n"
-                            + "RouterPort1={1}\n"
                             + "IRCIP0={0}\n"
                             + "IRCPort0={2}\n"
                             + "CDKeyServerIP0={4}\n" //{0}\n"
