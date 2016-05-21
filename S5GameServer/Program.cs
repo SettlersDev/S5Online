@@ -9,6 +9,7 @@ namespace S5GameServer
 {
     class Program
     {
+        //do not reference any foreign assemblies in Main(), otherwise embedding via Fody.Costura won't work in a Mono environment
         static void Main(string[] args)
         {
             if (Type.GetType("Mono.Runtime") == null)
@@ -23,6 +24,14 @@ namespace S5GameServer
             Console.WriteLine("\t-------------------------------");
             Console.WriteLine("\t for Settlers V\t\tv{0}", VersionHelper.GetVersion());
 
+            StartServers();
+            
+            Console.WriteLine("\n\t PRESS 'ENTER' to exit!\n");
+            Console.ReadLine();
+        }
+
+        static void StartServers()
+        {
             var logger = new DualLogger("logs/" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".log", true);
 
             Lobby.AddLobbies(ServerConfig.Instance.Lobbies);
@@ -38,11 +47,6 @@ namespace S5GameServer
             new MessageServer<LobbyServerConnection>() { Port = Constants.LOBBY_SERVER_PORT, Logger = logger }.Run();
             new MessageServer<LadderWaitModuleConnection>() { Port = Constants.LADDER_LOGIN_SERVER_PORT, Logger = logger }.Run();
             new MessageServer<LadderConnection>() { Port = Constants.LADDER_SERVER_PORT, Logger = logger }.Run();
-
-            Console.WriteLine();
-            Console.WriteLine("\t PRESS 'ENTER' to exit!");
-            Console.WriteLine();
-            Console.ReadLine();
         }
     }
 }
