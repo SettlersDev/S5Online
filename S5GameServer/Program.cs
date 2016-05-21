@@ -9,7 +9,7 @@ namespace S5GameServer
 {
     class Program
     {
-        //do not reference any foreign assemblies in Main(), otherwise embedding via Fody.Costura won't work in a Mono environment
+        //do not reference any foreign assemblies in Main(), since embedding via Fody.Costura won't work here in a Mono environment
         static void Main(string[] args)
         {
             if (Type.GetType("Mono.Runtime") == null)
